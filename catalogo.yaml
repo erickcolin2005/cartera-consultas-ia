@@ -29,22 +29,38 @@ fecha_corte: 2026-07-05
 como_decir_hoy: "consulta.fecha_corte()"    # nunca CURRENT_DATE (RN-07)
 
 conceptos:
+  - relacion: consulta.propietarios
+    negocio: "Las personas responsables del pago de una o varias unidades.
+              De aqui SOLO se publica el nombre y desde cuando figuran: documento,
+              correo y telefono existen en la base y NO son alcanzables."
+    columnas:
+      - {n: id,          tipo: entero, negocio: "Clave para unir con unidades.propietario_id. No es un dato de negocio"}
+      - {n: nombre,      tipo: texto,  negocio: "Nombre del propietario"}
+      - {n: fecha_alta,  tipo: fecha,  negocio: "Desde cuando figura como propietario. La UNICA razon para unir con esta vista: el nombre ya esta en unidades"}
+
   - relacion: consulta.unidades
     negocio: "Los inmuebles de la copropiedad: apartamentos, locales y parqueaderos.
               Cada unidad tiene un propietario responsable del pago."
     columnas:
+      - {n: id,                 tipo: entero,  negocio: "Clave para unir con cuotas.unidad_id y pagos.unidad_id. No es un dato de negocio"}
       - {n: codigo,             tipo: texto,   negocio: "Identificador visible de la unidad, p.ej. '302'"}
       - {n: torre,              tipo: texto,   negocio: "Bloque del conjunto"}
       - {n: tipo,               tipo: texto,   negocio: "Clase de inmueble"}
+      - {n: area_m2,            tipo: decimal, negocio: "Area construida de la unidad, en metros cuadrados"}
       - {n: coeficiente,        tipo: decimal, negocio: "Participacion de la unidad en los gastos comunes"}
+      - {n: propietario_id,     tipo: entero,  negocio: "Clave hacia consulta.propietarios.id"}
       - {n: propietario_nombre, tipo: texto,   negocio: "Nombre del propietario responsable"}
 
   - relacion: consulta.cuotas
     negocio: "Lo que se le factura a cada unidad cada mes. Una fila por unidad, mes y concepto."
     columnas:
+      - {n: id,                tipo: entero,  negocio: "Clave para unir con pagos.cuota_id. No es un dato de negocio"}
+      - {n: unidad_id,         tipo: entero,  negocio: "Clave hacia consulta.unidades.id"}
+      - {n: unidad_codigo,     tipo: texto,   negocio: "Codigo visible de la unidad. PREFIERE ESTE para agrupar o mostrar: evita la union con unidades"}
       - {n: periodo,           tipo: fecha,   negocio: "Mes al que corresponde la cuota (primer dia del mes)"}
       - {n: concepto,          tipo: texto,   negocio: "Tipo de cobro"}
       - {n: valor,             tipo: dinero,  negocio: "Monto facturado"}
+      - {n: fecha_emision,     tipo: fecha,   negocio: "Dia en que se emitio la cuota (dia 1 del mes)"}
       - {n: fecha_vencimiento, tipo: fecha,   negocio: "Dia en que la cuota debia estar pagada (dia 10 del mes)"}
       - {n: valor_pagado,      tipo: dinero,  negocio: "Suma de los abonos recibidos para esta cuota"}
       - {n: saldo,             tipo: dinero,  negocio: "Lo que falta por pagar de esta cuota. Nunca es negativo"}
@@ -55,8 +71,15 @@ conceptos:
     negocio: "Los abonos recibidos. Cada fila abona a UNA cuota. Un mismo giro que cubre
               varios meses aparece como varias filas con la misma referencia."
     columnas:
+      - {n: id,             tipo: entero, negocio: "Clave del abono. No es un dato de negocio"}
+      - {n: cuota_id,       tipo: entero, negocio: "Clave hacia consulta.cuotas.id: la cuota a la que se aplico este abono"}
+      - {n: unidad_id,      tipo: entero, negocio: "Clave hacia consulta.unidades.id"}
+      - {n: unidad_codigo,  tipo: texto,  negocio: "Codigo visible de la unidad que pago. PREFIERE ESTE para agrupar o mostrar"}
       - {n: fecha_pago,     tipo: fecha, negocio: "Dia en que la copropiedad recibio el dinero"}
       - {n: periodo_cuota,  tipo: fecha, negocio: "Mes de la cuota a la que se aplico este abono"}
+      - {n: concepto_cuota, tipo: texto,  negocio: "Tipo de cobro de la cuota abonada"}
+      - {n: valor,          tipo: dinero, negocio: "Monto del abono. ES LA COLUMNA DEL RECAUDO: sumar aqui para saber cuanto entro"}
+      - {n: medio_pago,     tipo: texto,  negocio: "Como se pago"}
       - {n: referencia,     tipo: texto, negocio: "Agrupa los abonos hechos en un mismo giro"}
 
 reglas_de_negocio:
