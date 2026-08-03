@@ -52,7 +52,7 @@ el build cae.
 
 Eso último ya no es una promesa, y ya no depende de que alguien se acuerde de
 comprobarlo. **Se comprueba en cada `push`**: `herramientas/sensibilidad.py`
-apaga cinco reglas, una a una, y exige que cada una tumbe su prueba. Empezó
+apaga siete reglas, una a una, y exige que cada una tumbe su prueba. Empezó
 siendo una comprobación a mano el 2026-08-02, con estos dos casos:
 
 | Regla desactivada | Qué pasó |
@@ -298,22 +298,30 @@ Python 3.13.14, sqlglot 30.14.0. La salida literal está en
 | **T-5 · el guardián no tiene por dónde filtrar nada** (prueba estructural) | `pytest tests/test_t5_fuga.py` |
 | **Cobertura del guardián: 92%** (el umbral exigido es 70%) | `pytest --cov=guardian` |
 | **T-11 · la bitácora no se puede falsificar** (caso M-30) | `pytest tests/test_t11_bitacora.py` |
-| **Apagar cinco reglas a propósito tumba el build, cada una en su prueba** | `python herramientas/sensibilidad.py` |
+| **T-7 · el «0» de la pantalla lo confirma PostgreSQL**, no el código que lo muestra | `pytest tests/test_t7_contador.py` |
+| **Apagar siete reglas a propósito tumba el build, cada una en su prueba** | `python herramientas/sensibilidad.py` |
 | **El build existe**: tres trabajos, uno de ellos sin base de datos | `.github/workflows/pruebas.yml` |
+
+**T-7 merece una línea aparte, porque es la única prueba en la que el número no
+lo dice quien lo muestra.** El registro del motor se enciende solo para el rol
+de la aplicación, y ese rol **no puede apagarlo** —cambiar `log_statement` pide
+superusuario—. Así, en un rechazo, el «0 sentencias enviadas» está afirmado por
+PostgreSQL y no por nosotros. Tiene además el caso positivo que le faltaba: en
+M-13 y M-14, que sí se ejecutan, el contador **sube**; sin esa mitad, un
+contador averiado que devolviera siempre 0 pasaría la prueba con nota.
+
+**Un número que conviene tener escrito:** una consulta ejecutada deja **tres**
+líneas en el registro del motor —`BEGIN`, la consulta, `COMMIT`— mientras
+nuestro contador marca **1**. Las dos extra las añade el driver y no pasan por
+el envoltorio del cursor. En un rechazo no hay ninguna de las tres.
 
 ### ❌ Todavía no existe
 
 El **adaptador del modelo**, el constructor de contexto y el traductor de
-errores completo. Con ellos, cinco de las trece pruebas: **T-2** (degradación),
-**T-6** (los cuatro tipos de respuesta), **T-7** (sentencias enviadas),
-**T-10** (superficie de salida y CSP) y **T-12** (traductor). Están nombradas
-para que su ausencia sea visible en vez de deducible.
-
-**T-7 merece una línea aparte.** El contador de sentencias enviadas es la cifra
-sobre la que descansa el bloque de rechazo entero, y **no tiene prueba**: hoy
-nadie impide que alguien lo deje clavado en cero. La mutación que lo destaparía
-está escrita y comentada en `herramientas/sensibilidad.py`, desactivada, porque
-una mutación sin prueba que tumbar no mide nada.
+errores completo. Con ellos, cuatro de las trece pruebas: **T-2** (degradación),
+**T-6** (los cuatro tipos de respuesta), **T-10** (superficie de salida y CSP) y
+**T-12** (traductor). Están nombradas para que su ausencia sea visible en vez de
+deducible.
 
 **Lo que este repositorio puede afirmar hoy:**
 
@@ -581,13 +589,16 @@ de verificación que solo enseña lo que sale bien no verifica nada.
 │   ├── bitacora.py             ← un evento JSON por línea, serializado
 │   └── servidor.py             ← la pantalla. Sin JavaScript
 ├── herramientas/
-│   └── sensibilidad.py         ← apaga reglas y exige que el build caiga
+│   ├── sensibilidad.py         ← apaga reglas y exige que el build caiga
+│   └── esperar-base.py         ← el init terminó de verdad, no solo responde
 ├── tests/
 │   ├── test_t8_privilegios.py  ← la primera prueba del repositorio
 │   ├── test_datos_invariantes.py
 │   ├── test_t1_banco.py        ← T-1 · los 52 casos al guardián. ROMPE EL BUILD
 │   ├── test_t5_fuga.py         ← T-5 · estructural. ROMPE EL BUILD
 │   ├── test_t11_bitacora.py    ← T-11 · M-30, falsificación. ROMPE EL BUILD
+│   ├── test_t7_contador.py     ← T-7 · testigo del motor. ROMPE EL BUILD
+│   ├── test_t7_contador.py     ← T-7 · testigo del motor. ROMPE EL BUILD
 │   └── test_guardian_reglas.py ← T-3, T-4, T-9, T-13, S5b/S5c, falsos positivos
 ├── .github/workflows/
 │   └── pruebas.yml             ← el build. Tres trabajos, ver §8.1
@@ -600,7 +611,7 @@ de verificación que solo enseña lo que sale bien no verifica nada.
 | Trabajo | Qué demuestra |
 |---|---|
 | `guardián · sin base de datos` | Que el guardián es **puro**. No se le crea `.env`: si alguna de esas pruebas empezara a necesitar una conexión, el trabajo se cae. Exige además **cobertura ≥ 70%** acotada a `guardian/` |
-| `las reglas apagadas tumban el build` | Apaga cinco reglas, una a una, y **exige que cada una tumbe la prueba que le corresponde** — no que «algo» se ponga rojo |
+| `las reglas apagadas tumban el build` | Apaga siete reglas, una a una, y **exige que cada una tumbe la prueba que le corresponde** — no que «algo» se ponga rojo |
 | `sistema completo · PostgreSQL real` | Levanta la base con **el mismo `docker compose up` que documenta este README**, no con un atajo del CI, y corre la suite entera |
 
 **Por qué el segundo trabajo comprueba el selector y no solo el código de
@@ -635,6 +646,7 @@ habría seguido en verde con la regla apagada.
 | I-5 | Editar y reejecutar la consulta con las mismas comprobaciones | ⏳ |
 | I-6 | La pantalla | ⏳ |
 | — | **Bitácora (T-11) y el build (CI)** · las dos frases que la pantalla afirmaba sin cumplir | ✅ **hecho** |
+| — | **T-7** · el contador, con caso positivo y testigo del lado del servidor | ✅ **hecho** |
 | I-7 | Ejecución completa del banco y tabla de resultados **con los fallos** | ⏳ |
 | I-8 | README como entregable de presentación | ⏳ |
 | I-9 | Demo pública *(opcional, no bloqueante)* | ⏳ |

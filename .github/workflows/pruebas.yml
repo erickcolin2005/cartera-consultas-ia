@@ -77,7 +77,33 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
 
-      # Apaga cinco reglas, una a una, y EXIGE que cada una tumbe la prueba
+      # ESTE TRABAJO SI NECESITA LA BASE, y no siempre fue asi.
+      #
+      # Al principio no la levantaba: todas las mutaciones apuntaban a pruebas
+      # puras. Al entrar T-7 —que mide el contador contra el registro del motor
+      # como testigo externo— dos mutaciones pasaron a apuntar a una prueba que
+      # necesita PostgreSQL y `docker compose logs`. Sin la base, la
+      # comprobacion de «verde primero» del mutador fallaria y el trabajo
+      # entero se caeria sin que hubiera nada roto.
+      - name: Configuración del entorno
+        run: |
+          cat > .env <<'FIN'
+          POSTGRES_USER=cartera_owner
+          POSTGRES_PASSWORD=ci-owner-efimero
+          POSTGRES_DB=cartera
+          CLAVE_RO=ci-ro-efimero
+          PUERTO_DB=5433
+          DATABASE_URL_OWNER=postgresql://cartera_owner:ci-owner-efimero@localhost:5433/cartera
+          DATABASE_URL_RO=postgresql://consulta_ro:ci-ro-efimero@localhost:5433/cartera
+          FIN
+
+      - name: Levantar la base
+        run: docker compose up -d --wait
+
+      - name: Esperar a que el init haya terminado de verdad
+        run: python herramientas/esperar-base.py
+
+      # Apaga siete reglas, una a una, y EXIGE que cada una tumbe la prueba
       # que le corresponde. Si alguna sigue en verde, este paso falla: esa
       # regla no estaba protegida y el README no podria decir lo que dice.
       - name: Apagar reglas a propósito
@@ -125,28 +151,14 @@ jobs:
         run: docker compose up -d --wait
 
       # El healthcheck del contenedor usa el socket local, y durante el init
-      # PostgreSQL ya escucha ahi con un servidor temporal. Es decir: puede dar
-      # verde ANTES de que los scripts de datos hayan corrido. Por eso se
-      # espera desde FUERA, por TCP, y ademas se afirma que los datos estan.
+      # PostgreSQL ya escucha ahi con un servidor temporal. Ver el porque
+      # completo —y la honestidad sobre si esa carrera se ha visto o no— en la
+      # cabecera del script.
       - name: Esperar a que el init haya terminado de verdad
-        run: |
-          python - <<'FIN'
-          import os, time, psycopg
-          url = "postgresql://cartera_owner:ci-owner-efimero@localhost:5433/cartera"
-          for intento in range(60):
-              try:
-                  with psycopg.connect(url, connect_timeout=3) as c:
-                      n = c.execute("SELECT count(*) FROM cartera.cuotas").fetchone()[0]
-                  assert n > 0, "la base responde pero no tiene datos"
-                  print(f"init terminado: {n} cuotas")
-                  break
-              except Exception as e:
-                  print(f"  intento {intento + 1}: {type(e).__name__}")
-                  time.sleep(2)
-          else:
-              raise SystemExit("la base nunca quedo lista")
-          FIN
+        run: python herramientas/esperar-base.py
 
+      # T-7(c) lee el registro del motor con `docker compose logs`. Es el
+      # testigo externo: sin el, el contador solo se afirma a si mismo.
       - name: Suite completa
         run: pytest -q
 

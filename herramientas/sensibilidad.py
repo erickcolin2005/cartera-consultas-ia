@@ -86,16 +86,37 @@ MUTACIONES = [
             "estar contenido: es la segunda mutacion que se probo a mano."
         ),
     ),
-    # HUECO CONOCIDO — el contador de sentencias no esta aqui.
-    #
-    # La mutacion evidente seria dejar `sentencias_enviadas` clavado en cero:
-    # la pantalla seguiria diciendo «sentencias enviadas: 0» en un rechazo, que
-    # es la cifra que sostiene el bloque entero. No esta en la lista porque
-    # **T-7 no existe todavia**, y una mutacion sin prueba que tumbar no mide
-    # nada. Escribirla aqui apuntando a un fichero inexistente daria un falso
-    # verde, que es peor que no tenerla.
-    #
-    # Se deja nombrada para que el hueco se lea, en vez de deducirse.
+    # Esta era el hueco conocido mientras T-7 no existia: una mutacion sin
+    # prueba que tumbar no mide nada. Ya existe T-7, asi que entra.
+    Mutacion(
+        nombre="contador-clavado-en-cero",
+        fichero="app/ejecutor.py",
+        busca="        self._contador.sentencias_enviadas += 1",
+        pone="        pass",
+        prueba="tests/test_t7_contador.py",
+        explica=(
+            "Deja el contador clavado en cero. La pantalla seguiria diciendo "
+            "«sentencias enviadas: 0» en un rechazo, que es correcto, y "
+            "tambien en una consulta que SI se ejecuta, que no lo es. Solo el "
+            "caso positivo de T-7 lo distingue."
+        ),
+    ),
+    Mutacion(
+        nombre="contador-en-el-ejecutor",
+        fichero="app/ejecutor.py",
+        busca="                cursor.execute(v.sql_a_ejecutar)",
+        pone=(
+            "                contador.sentencias_enviadas += 1\n"
+            "                crudo.execute(v.sql_a_ejecutar)"
+        ),
+        prueba="tests/test_t7_contador.py",
+        explica=(
+            "Saca el contador del borde y lo mete en el ejecutor, saltandose "
+            "el envoltorio. El numero sale igual, pero ya no mide lo que sale "
+            "hacia el motor: mide que decidimos contar. La parte (b) de T-7 "
+            "—estructural— es la unica que ve la diferencia."
+        ),
+    ),
     Mutacion(
         nombre="bitacora-concatenada",
         fichero="app/bitacora.py",
