@@ -7,12 +7,22 @@ guardián **sin base de datos**, el sistema completo contra PostgreSQL, y uno qu
 **apaga siete reglas a propósito y exige que el build caiga**—. Si está en verde,
 las afirmaciones de este documento se midieron en una máquina que no es la mía.
 
-> ## 🚧 EN CONSTRUCCIÓN — incrementos I-0, I-1 e I-2′ cerrados (de 9)
+> ## 🚧 EN CONSTRUCCIÓN — 5 de 9 incrementos cerrados: I-0, I-1, I-2′, I-3′ e I-6
 >
-> **Nada de lo que este documento describe en futuro está funcionando todavía.**
-> Lo que sí corre hoy, y se puede reproducir en cinco minutos, está en
-> [§4 · Qué corre hoy](#4--qué-corre-hoy-y-qué-no). El resto es diseño acordado
-> y pendiente de construir.
+> **Falta justo la pieza del título: no hay adaptador del modelo.** Hoy escribes
+> SQL en la pantalla y el sistema lo revisa, lo ejecuta o lo rechaza nombrando la
+> regla, y lo registra. Traducir una pregunta en español a SQL —y con ella la
+> repregunta ante la ambigüedad y el «no hay datos para eso»— es **I-4**, y no
+> está hecho.
+>
+> Esa parte importa decirla clara: el título promete lenguaje natural y **el
+> lenguaje natural es lo que falta**. Lo que ya se sostiene es la mitad difícil de
+> demostrar —la contención, medida— y está en
+> [§4 · Qué corre hoy](#4--qué-corre-hoy-y-qué-no), con el comando de cada
+> comprobación al lado.
+>
+> Pendientes: **I-4** (el modelo), I-5 (editar y reejecutar), I-7 (banco completo
+> con los fallos publicados) e I-8 (este README como entregable).
 >
 > Este aviso desaparece cuando el sistema completo esté medido, no antes.
 
@@ -44,12 +54,13 @@ proyecto**. Ni una fila viene de un sistema real.
 
 ## 2 · Las tres cosas que conviene comprobar
 
-Son las tres conductas por las que vale la pena mirar esto. Ninguna funciona
-todavía; las tres tienen su diseño cerrado y su prueba definida.
+Son las tres conductas por las que vale la pena mirar esto. **La primera ya
+funciona y se puede probar**; las otras dos tienen el diseño cerrado y la prueba
+definida, y esperan al adaptador del modelo (I-4).
 
 | # | Conducta | Estado |
 |---|---|---|
-| 1 | **Rechaza lo destructivo nombrando la regla que se violó** | ✅ **La decisión ya funciona y está medida** (T-1). Falta enseñarla: no hay pantalla |
+| 1 | **Rechaza lo destructivo nombrando la regla que se violó** | ✅ **Funciona de punta a punta y está medida** (T-1, T-7). Hay pantalla: `python app/servidor.py` |
 | 2 | **Repregunta** cuando la pregunta admite más de una respuesta correcta, con opciones ya validadas | Diseño cerrado · **I-4** |
 | 3 | Dice **«no hay datos para eso»** en vez de inventar una consulta que devuelva algo | Diseño cerrado · **I-4** |
 
@@ -77,13 +88,17 @@ fallo, no solo que hubo fallo.**
 
 ## 3 · Cómo se verán · bloques de pantalla
 
-**Estos bloques son el diseño acordado de la interfaz, escrito en texto. NO son
-capturas: no hay nada que capturar todavía.**
+**Estos bloques son el diseño acordado de la interfaz, escrito en texto. No son
+capturas.**
+
+**El bloque de rechazo (§3.2) ya funciona** y se puede ver en
+`http://localhost:8000`. Los que describen la vía en lenguaje natural —la
+repregunta, el «no hay datos»— siguen siendo diseño: esa vía es I-4.
 
 Están en texto a propósito y no como imágenes simuladas. Una captura simulada de
-un sistema que aún no funciona es el único material de un proyecto así que puede
-publicarse por error y afirmar algo falso. En texto plano, dentro de un README
-que empieza declarando que está en construcción, eso no puede pasar.
+algo que aún no funciona es el único material de un proyecto así que puede
+publicarse por error y afirmar algo falso. En texto plano, y diciendo cuál de
+los bloques corre ya y cuál no, eso no puede pasar.
 
 ### 3.1 · Pantalla inicial
 
@@ -288,6 +303,11 @@ pidiera.
 **Verificado el 2026-08-02 contra PostgreSQL 16.10** (imagen `postgres:16`),
 Python 3.13.14, sqlglot 30.14.0. La salida literal está en
 [`evidencia/I-1/`](evidencia/I-1/).
+
+**Y desde entonces, en cada `push`, sobre una máquina limpia que no es la mía**
+—ahí está la insignia de arriba—. Esa diferencia no es menor: la primera
+ejecución del CI destapó que las pruebas solo importaban si se lanzaban con
+`python -m pytest`. En mi máquina llevaba semanas en verde.
 
 ### ✅ Funciona y se puede reproducir
 
@@ -648,10 +668,10 @@ habría seguido en verde con la regla apagada.
 | **I-1** | **Base de datos, privilegios, revocaciones, datos y T-8** | ✅ **hecho** |
 | — | `G3-SEC-1` · recorrido función por función contra el motor real | ⏳ siguiente |
 | **I-2′** | **Guardián completo S0…S7, listas blancas, T-1 y T-5 rompiendo el build** | ✅ **hecho** |
-| I-3′ | Levantar restricciones sin perder contención | ⏳ |
+| **I-3′** | **`WITH`, subconsultas e identificadores entrecomillados, sin perder contención** | ✅ **hecho** |
 | I-4 | Repregunta, «no hay datos», integración real con el proveedor | ⏳ |
 | I-5 | Editar y reejecutar la consulta con las mismas comprobaciones | ⏳ |
-| I-6 | La pantalla | ⏳ |
+| **I-6** | **La pantalla: una sola, sin JavaScript, con la consulta ejecutada a la vista** | ✅ **hecho** |
 | — | **Bitácora (T-11) y el build (CI)** · las dos frases que la pantalla afirmaba sin cumplir | ✅ **hecho** |
 | — | **T-7** · el contador, con caso positivo y testigo del lado del servidor | ✅ **hecho** |
 | I-7 | Ejecución completa del banco y tabla de resultados **con los fallos** | ⏳ |
