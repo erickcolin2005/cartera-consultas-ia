@@ -206,6 +206,54 @@ def comprobar(m: Mutacion) -> bool:
     return True
 
 
+def cifra_de_la_pantalla() -> bool:
+    """La pantalla dice «N pruebas en verde». Que N sea N.
+
+    POR QUE ESTA COMPROBACION EXISTE
+    ---------------------------------
+    Ese numero esta escrito a mano en `servidor.py` y **ya se quedo atras una
+    vez**: la suite paso de 188 a 212 y la pantalla siguio diciendo 188. Es el
+    defecto que este repositorio entero persigue —una cifra afirmada que nadie
+    vuelve a medir—, cometido en el propio sitio donde se predica.
+
+    Vive aqui y no en `tests/` a proposito: contar las pruebas desde dentro de
+    una prueba es recursivo. Este script ya lanza pytest como subproceso, asi
+    que preguntarle cuantas hay no cuesta nada.
+    """
+    import re
+
+    fuente = _leer(RAIZ / "app" / "servidor.py")
+    escrito = re.search(r"<strong>(\d+) pruebas en verde</strong>", fuente)
+    if not escrito:
+        print("  ✗ pantalla: no encuentro la cifra de pruebas en servidor.py.")
+        return False
+
+    # Se cuentan las que PASAN, no las que se recolectan.
+    #
+    # `--collect-only` seria mas rapido y estaria mal: incluye la que se salta
+    # (M-27), y la pantalla dice «en verde», no «escritas». Al escribir esta
+    # comprobacion decia 213 frente a 212 — una diferencia de uno que resultaba
+    # ser exactamente esa distincion.
+    salida = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q"],
+        cwd=RAIZ, capture_output=True, text=True,
+    )
+    en_verde = re.search(r"(\d+)\s+passed", salida.stdout)
+    if not en_verde:
+        print("  ✗ pantalla: pytest no dijo cuantas pruebas pasaron.")
+        print(f"    {salida.stdout.strip().splitlines()[-1:]}")
+        return False
+
+    dice, hay = int(escrito.group(1)), int(en_verde.group(1))
+    if dice != hay:
+        print(f"  ✗ pantalla: dice {dice} pruebas en verde y hay {hay}.")
+        print("    Una cifra en pantalla que nadie vuelve a medir es el defecto")
+        print("    que este proyecto existe para no cometer.")
+        return False
+    print(f"  ✓ pantalla: dice {dice} pruebas y hay {hay}.")
+    return True
+
+
 def main() -> int:
     pedidas = sys.argv[1:]
     lista = [m for m in MUTACIONES if not pedidas or m.nombre in pedidas]
@@ -215,6 +263,13 @@ def main() -> int:
 
     print("Apagando reglas a proposito. Cada una TIENE que tumbar su prueba.\n")
     fallos = [m.nombre for m in lista if not comprobar(m)]
+
+    # Solo en la pasada completa: con una mutacion suelta, contar las pruebas
+    # de todo el repositorio no viene a cuento.
+    if not pedidas:
+        print()
+        if not cifra_de_la_pantalla():
+            fallos.append("cifra-de-la-pantalla")
 
     print()
     if fallos:

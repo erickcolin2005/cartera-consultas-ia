@@ -133,7 +133,7 @@ alguien <strong>va a intentar romperlo</strong>, y está construido para eso.</p
 </ol>
 <p class="cd">Las reglas viven en código y tienen prueba: si se desactiva una,
 el build cae — y eso también se comprueba, apagando reglas a propósito en cada
-cambio. Hoy: <strong>188 pruebas en verde</strong>.</p>
+cambio. Hoy: <strong>212 pruebas en verde</strong>.</p>
 
 <form method="get" action="/">
 <label for="sql">Escribe una consulta SQL (máximo {TOPE_SQL} caracteres)</label>
