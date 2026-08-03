@@ -1,5 +1,12 @@
 # Consultas en lenguaje natural sobre datos de cartera, con contención verificable
 
+[![pruebas](https://github.com/erickcolin2005/cartera-consultas-ia/actions/workflows/pruebas.yml/badge.svg)](https://github.com/erickcolin2005/cartera-consultas-ia/actions/workflows/pruebas.yml)
+
+La insignia no es decoración: enlaza a la ejecución real. Tres trabajos —el
+guardián **sin base de datos**, el sistema completo contra PostgreSQL, y uno que
+**apaga siete reglas a propósito y exige que el build caiga**—. Si está en verde,
+las afirmaciones de este documento se midieron en una máquina que no es la mía.
+
 > ## 🚧 EN CONSTRUCCIÓN — incrementos I-0, I-1 e I-2′ cerrados (de 9)
 >
 > **Nada de lo que este documento describe en futuro está funcionando todavía.**
