@@ -15,13 +15,24 @@ Lista blanca, no lista negra. Lo que no esta enumerado se rechaza. Si mañana
 sqlglot introduce un tipo de nodo nuevo, este guardian lo RECHAZA por no
 conocerlo, en vez de dejarlo pasar por no haberlo prohibido.
 
-ALCANCE DE I-2' — FALLO CERRADO MAXIMO, Y ES DELIBERADO
---------------------------------------------------------
-En este incremento se rechaza TODO `WITH`, TODA subconsulta y TODO
-identificador entrecomillado. El sistema queda **estricto de mas**: rechazara
-consultas legitimas. Eso es lo correcto ahora — levantar restricciones sin
-perder contencion es trabajo de I-3', y hacerlo antes de tener la contencion
-probada es el orden equivocado.
+ALCANCE DE I-3' — SE LEVANTAN TRES RESTRICCIONES, NINGUNA CONTENCION
+---------------------------------------------------------------------
+I-2' rechazaba TODO `WITH`, TODA subconsulta y TODO identificador
+entrecomillado: fallo cerrado maximo, deliberadamente estricto de mas. Con la
+contencion ya medida (C2 = 15/15, C2' = 12/12), I-3' admite las tres formas
+legitimas SIN tocar una sola regla de contencion:
+
+  · `WITH` legitimo  -> la escritura anidada la sigue viendo S2, que recorre el
+    arbol entero (M-09). La recursion la siguen viendo S5b y S5c (M-25).
+  · Subconsultas      -> las relaciones las sigue recorriendo S3 en todos los
+    niveles, incluidas las anidadas (M-11).
+  · Identificadores entrecomillados -> ver la nota de `nucleo._identificador`.
+    Es la unica de las tres que exigio trabajo real, y no por permisividad:
+    por NORMALIZACION.
+
+Ninguna regla se relaja. Lo que cambia es que tres formas dejan de rechazarse
+por su TIPO, y pasan a juzgarse por su CONTENIDO — que es lo que siempre
+debieron hacer.
 """
 
 from __future__ import annotations
@@ -76,15 +87,26 @@ TIPOS_OPACOS: tuple[type[exp.Expression], ...] = (
 # Enumerados a partir de consultas legitimas de cartera sobre las cuatro
 # vistas. Lo que no este aqui se rechaza.
 #
-# NO ESTAN, Y ES EL ALCANCE DE I-2':
-#   With, CTE           -> todo `WITH` se rechaza (contiene M-09 y M-25)
-#   Subquery            -> toda subconsulta se rechaza (contiene M-11)
-#   Union, Except, Intersect -> operaciones de conjunto, a I-3'
-#   Window, Lambda, ...  -> no hacen falta para cartera
+# ADMITIDOS EN I-3', y por que ninguno abre un hueco:
+#   With, CTE  -> M-09 (`WITH x AS (DELETE ...)`) lo sigue rechazando S2, que
+#     recorre el arbol ENTERO y no la raiz. M-25 (`WITH RECURSIVE`) lo siguen
+#     rechazando S5b —modificador `recursive` no enumerado— y S5c
+#     —autorreferencia—, que es el respaldo estructural.
+#   Subquery   -> M-11 (`... (SELECT ... FROM nomina_empleados)`) lo sigue
+#     rechazando S3, que recorre TODAS las relaciones con `find_all`, no solo
+#     las del nivel superior.
+#
+# NO ESTAN, Y NO SE ADMITEN AQUI:
+#   Union, Except, Intersect -> ninguna pregunta del banco las necesita.
+#     Admitirlas "por si acaso" seria ampliar la superficie sin caso de uso, y
+#     cada tipo nuevo hay que medirlo, no suponerlo.
+#   Window, Lambda, ...      -> no hacen falta para cartera.
 TIPOS_PERMITIDOS: frozenset[type[exp.Expression]] = frozenset({
     # estructura de la consulta
     exp.Select, exp.From, exp.Join, exp.Where, exp.Group, exp.Having,
     exp.Order, exp.Ordered, exp.Limit, exp.Offset, exp.Distinct,
+    # composicion (I-3'): se juzgan por su contenido, no por su tipo
+    exp.With, exp.CTE, exp.Subquery,
     # nombres y referencias
     exp.Table, exp.TableAlias, exp.Identifier, exp.Column, exp.Alias,
     exp.Star, exp.Dot, exp.Var,
@@ -157,17 +179,25 @@ TIPOS_DE_RELOJ: tuple[type[exp.Expression], ...] = (
 # nodo distinto de `WITH` — la recursion es una PROPIEDAD del nodo.
 #
 # Se comprueba todo argumento booleano en `True`. Lo que no este aqui se
-# rechaza. Dos consecuencias que valen la pena:
-#   · `With.recursive`  -> no esta        -> rechazado (M-25)
-#   · `Identifier.quoted` -> no esta      -> TODO identificador entrecomillado
-#     queda rechazado, que es justo la restriccion de I-2'. La regla cae sola
-#     de la politica en vez de necesitar un caso especial.
+# rechaza. La consecuencia que importa:
+#   · `With.recursive` -> NO esta -> rechazado (M-25). Sigue fuera en I-3': la
+#     recursion es la unica de las tres restricciones de I-2' que NO se levanta,
+#     porque ninguna pregunta de cartera la necesita y su coste es un bucle en
+#     el motor.
+#
+# `Identifier.quoted` SI entra en I-3'. En I-2' su ausencia rechazaba todo
+# identificador entrecomillado, que era la restriccion buscada. Admitirlo exige
+# resolver ANTES la normalizacion (ver `nucleo._identificador`): sin eso,
+# `"PROPIETARIOS"` se compararia en minusculas contra la lista blanca y pasaria
+# apuntando a un objeto que no es el permitido. El orden importa — primero la
+# normalizacion correcta, despues el permiso.
 MODIFICADORES_PERMITIDOS: frozenset[tuple[type[exp.Expression], str]] = frozenset({
     (exp.Is, "negate"),
     (exp.Literal, "is_string"),
     (exp.Ordered, "desc"),
     (exp.Ordered, "nulls_first"),
     (exp.Distinct, "on"),
+    (exp.Identifier, "quoted"),   # I-3'
 })
 
 # ---------------------------------------------------------------------------

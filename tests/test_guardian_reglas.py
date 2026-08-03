@@ -416,28 +416,97 @@ def test_un_with_no_recursivo_pasa_cuando_se_permite(con_with_permitido):
     assert v.permitido, f"un WITH legitimo se rechazo por {v.regla}"
 
 
-def test_el_sistema_real_sigue_rechazando_todo_with():
-    """Que el andamio de arriba exista no puede haber cambiado el sistema."""
-    for sql in [
-        "WITH v AS (SELECT 1) SELECT * FROM v",
+# ===========================================================================
+# I-3' · Las tres restricciones levantadas
+#
+# Estas tres pruebas sustituyen a las de I-2' que afirmaban "esto se rechaza
+# siempre". No se borraron: se DIERON LA VUELTA. Ahora afirman lo unico que
+# importa al levantar una restriccion — que se levanta la FORMA, no el control.
+#
+# El valor esta en los pares: cada prueba admite la construccion legitima Y
+# comprueba que el ataque que viajaba dentro de esa misma construccion sigue
+# rechazado, y POR SU REGLA. Sin la segunda mitad, permitir `WITH` seria
+# indistinguible de haber apagado S2.
+# ===========================================================================
+
+def test_i3_with_legitimo_pasa_pero_la_escritura_anidada_sigue_rechazada():
+    """El permiso es a la forma, no al contenido.
+
+    M-09 es la razon de ser de S2: raiz `SELECT` impecable, `DELETE` dentro. Si
+    al admitir `WITH` este caso pasara a permitido, habriamos cambiado una
+    restriccion de alcance por un agujero.
+    """
+    legitimo = veredicto(
+        "WITH v AS (SELECT unidad_codigo, saldo FROM cuotas WHERE estado = 'vencida')"
+        " SELECT unidad_codigo, SUM(saldo) FROM v GROUP BY unidad_codigo",
+        CATALOGO,
+    )
+    assert legitimo.permitido, f"un WITH legitimo se rechazo por {legitimo.regla}"
+
+    atacante = veredicto(
+        "WITH x AS (DELETE FROM pagos RETURNING *) SELECT * FROM x", CATALOGO
+    )
+    assert not atacante.permitido and atacante.regla == "S2", (
+        f"M-09 salio por {atacante.regla}. Contenido no basta: si sale por S5 "
+        f"significa que lo para la restriccion de forma y no S2, y el dia que "
+        f"esa restriccion se levante caera el control sin que nadie lo note."
+    )
+
+
+def test_i3_subconsulta_legitima_pasa_pero_el_escape_anidado_sigue_rechazado():
+    """M-11: la consulta externa es impecable y el escape esta anidado.
+
+    Al admitir subconsultas, que S3 recorra TODOS los niveles deja de ser
+    prudencia y pasa a ser la unica cosa que separa esto de un agujero.
+    """
+    legitima = veredicto(
+        "SELECT * FROM cuotas WHERE id IN (SELECT cuota_id FROM pagos)", CATALOGO
+    )
+    assert legitima.permitido, f"subconsulta legitima rechazada por {legitima.regla}"
+
+    escape = veredicto(
+        "SELECT * FROM pagos WHERE valor > "
+        "(SELECT MAX(salario) FROM nomina_empleados)",
+        CATALOGO,
+    )
+    assert not escape.permitido and escape.regla == "S3", (
+        f"M-11 salio por {escape.regla}: la lista blanca solo estaria mirando "
+        f"el nivel superior."
+    )
+
+
+def test_i3_comillas_admitidas_pero_las_mayusculas_NO_se_pliegan():
+    """La unica de las tres que exigio trabajo real, y no por permisividad.
+
+    En PostgreSQL un identificador sin comillas se pliega a minusculas, y uno
+    entrecomillado se usa literal: `"PROPIETARIOS"` es un objeto DISTINTO de
+    `propietarios`. Si el guardian normalizara todo a minusculas —que es lo que
+    hacia antes— `"PROPIETARIOS"` pasaria la lista blanca y el SQL llegaria al
+    motor apuntando a un objeto que la lista NUNCA autorizo.
+
+    Esta prueba es la que hace que el permiso de I-3' no sea un agujero.
+    """
+    for sql in ['SELECT * FROM "cuotas"', 'SELECT * FROM consulta."cuotas"']:
+        v = veredicto(sql, CATALOGO)
+        assert v.permitido, f"{sql} deberia pasar: es el mismo objeto -> {v.regla}"
+
+    for sql in ['SELECT * FROM "CUOTAS"', 'SELECT * FROM "Propietarios"',
+                'SELECT * FROM "CONSULTA"."cuotas"']:
+        v = veredicto(sql, CATALOGO)
+        assert not v.permitido and v.regla == "S3", (
+            f"{sql} -> {v.regla}. Entrecomillado NO se pliega: es otro objeto y "
+            f"no esta en la lista blanca."
+        )
+
+
+def test_i3_la_recursion_sigue_prohibida():
+    """De las tres restricciones de I-2', la recursion NO se levanta.
+
+    Ninguna pregunta de cartera la necesita y su coste es un bucle en el motor.
+    Se mantiene por falta de caso de uso, no por no saber contenerla.
+    """
+    v = veredicto(
         "WITH RECURSIVE t AS (SELECT 1 UNION ALL SELECT 1 FROM t) SELECT * FROM t",
-    ]:
-        v = veredicto(sql, CATALOGO)
-        assert not v.permitido and v.regla == "S5"
-
-
-def test_todo_identificador_entrecomillado_se_rechaza():
-    """Restriccion de I-2'. Cae sola de S5b —`Identifier.quoted` no esta entre
-    los modificadores permitidos— en vez de necesitar un caso especial."""
-    for sql in ['SELECT * FROM "cuotas"', 'SELECT "codigo" FROM unidades',
-                'SELECT * FROM consulta."cuotas"']:
-        v = veredicto(sql, CATALOGO)
-        assert not v.permitido and v.regla == "S5", f"{sql} -> {v.regla}"
-
-
-def test_toda_subconsulta_se_rechaza():
-    """Restriccion de I-2'. En I-3' se levantara restando alias, no antes."""
-    for sql in ["SELECT * FROM (SELECT 1) s",
-                "SELECT * FROM cuotas WHERE id IN (SELECT cuota_id FROM pagos)"]:
-        v = veredicto(sql, CATALOGO)
-        assert not v.permitido
+        CATALOGO,
+    )
+    assert not v.permitido and v.regla == "S5"

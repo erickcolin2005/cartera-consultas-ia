@@ -138,17 +138,27 @@ def veredicto(sql: str, catalogo: Catalogo) -> Veredicto:
             return rechazo("S2", eco)
 
         # --- S3 · relaciones, en todos los niveles -----------------------
+        # `find_all` recorre TODOS los niveles, no solo el superior. Es lo que
+        # sostiene M-11: la consulta externa es impecable y el escape esta en
+        # una subconsulta anidada. Al admitirse subconsultas en I-3', esta
+        # propiedad pasa de ser prudente a ser imprescindible.
+        #
+        # Los nombres definidos por la propia consulta —CTE y subconsultas con
+        # alias— se RESTAN: no son relaciones del esquema y exigirles estar en
+        # la lista blanca rechazaria toda consulta compuesta legitima. Restarlos
+        # no abre nada: un CTE solo puede leer de lo que el mismo autorizo, y su
+        # contenido lo recorre igualmente este bucle.
         definidas_aqui = {
-            alias.lower()
-            for alias in (
-                [c.alias for c in raiz.find_all(exp.CTE)]
-                + [s.alias for s in raiz.find_all(exp.Subquery)]
+            nombre
+            for nombre in (
+                [_alias_efectivo(c) for c in raiz.find_all(exp.CTE)]
+                + [_alias_efectivo(s) for s in raiz.find_all(exp.Subquery)]
             )
-            if alias
+            if nombre
         }
         for tabla in raiz.find_all(exp.Table):
-            esquema = (tabla.db or "").lower()
-            nombre = tabla.name.lower()
+            esquema = _identificador(tabla.args.get("db"))
+            nombre = _identificador(tabla.this)
             if not esquema and nombre in definidas_aqui:
                 continue
             if tabla.catalog:
@@ -308,6 +318,58 @@ def _profundidad_del_arbol(raiz: exp.Expression) -> int:
                 return altura
         profundidad = max(profundidad, altura)
     return profundidad
+
+
+def _identificador(nodo) -> str:
+    """Nombre EFECTIVO de un identificador, segun la regla real de PostgreSQL.
+
+    Sin comillas, PostgreSQL pliega el identificador a minusculas: `Propietarios`
+    y `propietarios` son el MISMO objeto. Entrecomillado, lo usa literal:
+    `"Propietarios"` es un objeto DISTINTO de `propietarios`.
+
+    POR QUE ESTO ES UNA REGLA DE SEGURIDAD Y NO UNA CORTESIA
+    --------------------------------------------------------
+    Hasta I-2' daba igual, porque todo identificador entrecomillado se
+    rechazaba. Al admitirlos en I-3', normalizar siempre a minusculas —que es
+    lo que hacia el codigo anterior— crearia un hueco real:
+
+        SELECT * FROM "PROPIETARIOS"
+
+    se compararia como `propietarios`, PASARIA la lista blanca, y el SQL
+    reserializado conservaria las comillas y llegaria al motor apuntando a un
+    objeto que la lista blanca NUNCA autorizo. La lista blanca diria que si
+    sobre una tabla, y el motor ejecutaria sobre otra.
+
+    Con esta funcion, `"PROPIETARIOS"` conserva sus mayusculas, no coincide con
+    ninguna entrada de la lista blanca —que esta escrita en minusculas— y se
+    rechaza por S3. Y `"propietarios"` si coincide, que tambien es correcto:
+    entrecomillado en minusculas es el mismo objeto.
+
+    El permiso de I-3' no es "acepta comillas": es "trata las comillas como las
+    trata el motor". Sin esa distincion, el permiso habria sido un agujero.
+    """
+    if nodo is None:
+        return ""
+    if isinstance(nodo, str):
+        return nodo.lower()
+    if getattr(nodo, "quoted", False):
+        return nodo.name
+    return nodo.name.lower()
+
+
+def _alias_efectivo(nodo: exp.Expression) -> str:
+    """Alias que un CTE o una subconsulta declara, con la misma normalizacion.
+
+    Tiene que usar EXACTAMENTE la misma regla que `_identificador`: si los
+    nombres definidos se normalizaran de una forma y las tablas de otra, un
+    alias entrecomillado dejaria de restarse y la consulta legitima que lo usa
+    se rechazaria por S3 — un falso positivo nacido de dos normalizaciones que
+    no coinciden.
+    """
+    alias = nodo.args.get("alias")
+    if alias is None:
+        return ""
+    return _identificador(getattr(alias, "this", alias))
 
 
 def _modificadores(nodo: exp.Expression):

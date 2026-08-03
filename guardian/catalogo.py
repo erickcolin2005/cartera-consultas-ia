@@ -73,7 +73,25 @@ class Catalogo:
     # -- consultas -------------------------------------------------------
 
     def relacion_permitida(self, esquema: str, nombre: str) -> bool:
-        return (esquema.lower(), nombre.lower()) in self.relaciones_permitidas
+        """Comparacion EXACTA. El plegado ya lo hizo quien llama.
+
+        Aqui habia un `.lower()` sobre los dos argumentos. Era inocuo mientras
+        todo identificador entrecomillado se rechazaba (I-2'), y se volvio un
+        agujero en cuanto I-3' los admitio: plegaba `"CUOTAS"` a `cuotas`, la
+        encontraba en la lista blanca y devolvia permitido — mientras el SQL
+        reserializado conservaba las comillas y llegaba al motor apuntando a un
+        objeto que la lista NUNCA autorizo.
+
+        La lista se carga ya normalizada (`_partir_relacion` pliega al leer el
+        catalogo), asi que el `.lower()` de aqui no aportaba defensa: solo
+        deshacia el trabajo de `nucleo._identificador`, que es el unico sitio
+        donde se sabe si el identificador venia entrecomillado.
+
+        Regla general que deja este caso: **normalizar dos veces es peor que
+        normalizar una.** La segunda no sabe lo que supo la primera, y la
+        contradice en silencio.
+        """
+        return (esquema, nombre) in self.relaciones_permitidas
 
     def funcion_permitida(self, nombre: str, esquema: str | None = None) -> bool:
         """Lista blanca. Los prohibidos-siempre mandan sobre la lista blanca.
