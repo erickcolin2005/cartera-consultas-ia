@@ -1,0 +1,63 @@
+======================================================================
+ EVIDENCIA I-2' · el guardian. Salida literal, sin editar.
+ Fecha: 2026-08-02 · sqlglot 30.14.0 · Python 3.13.14
+======================================================================
+
+### 1 · P-1..P-16 · comprobaciones de sqlglot ANTES de escribir la politica
+P-1  lista de sentencias al parsear .............. SI. `parse` devuelve lista; None para
+     sentencia vacia y un nodo Semicolon para `;` suelto: los dos hay que descartarlos.
+P-2  recorrer todos los nodos ..................... SI. `walk()` devuelve NODOS (no tuplas).
+P-3  distinguir el tipo de cada nodo .............. SI.
+P-4  nombre/esquema/entrecomillado de una tabla ... SI. `.name`, `.db`, `.catalog`,
+     y `Identifier.quoted` como booleano.
+P-5  nombres de CTE y alias de subconsulta ........ SI. I-3' es posible.
+P-6  reserializar a PostgreSQL .................... SI.
+P-7  un CTE que escribe se parsea como Delete ..... SI. **`Delete` ESTA en el arbol** de
+     `WITH x AS (DELETE ...) SELECT * FROM x`. Es la comprobacion que decide el proyecto.
+P-8  tipo destino de un CAST ...................... SI, CON MATIZ IMPORTANTE: `regclass`,
+     `oid` y `regproc` NO son `DataType` sino `ObjectIdentifier`. Justo los tipos que S7a
+     existe para rechazar. Asumir `DataType` habria fallado en el unico caso que importa.
+P-9  nodo opaco / no modelado ..................... SI, y es `Command`. sqlglot NO lanza
+     excepcion ante VACUUM/SHOW/CALL/DO: cae a `Command` con el TEXTO CRUDO. Dejarlo pasar
+     seria ejecutar texto sin analizar mientras se afirma que se analiza.
+P-15 propiedad de recursion de un WITH ............ SI. `With.args['recursive'] is True`.
+     S5b ES implementable; no hace falta caer a S5c.
+P-16 modificadores enumerables ..................... SI, como argumentos booleanos.
+
+### 2 · Suite completa
+..                                                      [100%]
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.13.14-final-0 _______________
+
+Name                   Stmts   Miss  Cover   Missing
+----------------------------------------------------
+guardian\__init__.py       4      0   100%
+guardian\catalogo.py      64      3    95%   106, 119, 128
+guardian\contrato.py      27      0   100%
+guardian\nucleo.py       150     18    88%   61, 92, 94-96, 134, 138, 155, 227, 241-242, 257-258, 268-269, 308, 347-348
+guardian\politica.py      14      0   100%
+----------------------------------------------------
+TOTAL                    259     21    92%
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_t1_banco.py:109: M-27: Es un ataque de VOLUMEN (100 peticiones seguidas), no de contenido. Su contencion es el limite de tasa por IP y el tope de gasto, que son F6. El guardian no tiene nada que decidir sobre esta fila.
+162 passed, 1 skipped in 1.24s
+
+### 3 · D-F · desactivar una regla pone el build EN ROJO (dos mutaciones)
+MUTACION 1 · se saca `exp.Delete` de TIPOS_DE_ESCRITURA (regla S2):
+  AssertionError: M-09 fue contenida, pero por la regla S5 y no por S2.
+  1 failed, 39 passed
+  -> La carga SIGUIO CONTENIDA (S5 la atrapa porque en I-2' todo WITH esta prohibido).
+     La prueba fallo igualmente porque afirma LA CLASE del rechazo. Una prueba que solo
+     comprobara "fue rechazado" habria seguido en verde, y la regresion habria aparecido
+     en I-3', al levantar la restriccion de WITH.
+
+MUTACION 2 · se desactiva la comprobacion de tipo de CAST (regla S7a):
+  AssertionError: M-19 NO FUE CONTENIDA. Es un fallo de C2.
+  AssertionError: C2' != 100%. Filas no contenidas: ['M-19']
+  2 failed, 38 passed
+  -> Contencion realmente rota. M-19 no tiene ninguna capa debajo: un CAST no se puede
+     revocar en el motor.
+
+Los dos ficheros se restauraron y la suite volvio a verde.
+NOTA: el repositorio NO esta bajo git todavia, asi que estos dos commits NO existen en
+ningun historial. El plan pide que existan como demostracion de D-F. Queda pendiente.

@@ -1,0 +1,220 @@
+======================================================================
+ EVIDENCIA I-1 · salida literal, sin editar
+ Fecha: 2026-08-02 · Motor: PostgreSQL 16.10 (imagen postgres:16)
+ Maquina: Windows 11 + Docker Desktop 28.5.1 · Python 3.13.14
+ ESTO NO ES G3-SEC-1. G3-SEC-1 tiene su propio encargo y no se ejecuto.
+======================================================================
+
+### 1 · INIT DEL CONTENEDOR (docker compose logs db) — revocaciones
+>>> init: 01-esquema.sql
+>>> init: 02-permisos.sql
+>>> init: 03-revocaciones.sql
+NOTICE:  REVOCACION · nombre "col_description": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "current_database": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "current_schemas": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "current_setting": 2 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "generate_series": 9 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "inet_client_addr": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "inet_client_port": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "inet_server_addr": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "inet_server_port": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "obj_description": 2 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "pg_backend_pid": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "pg_conf_load_time": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "pg_current_logfile": 2 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "pg_postmaster_start_time": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "pg_relation_filepath": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "pg_stat_file": 2 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "set_config": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "shobj_description": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "to_regclass": 1 sobrecarga(s)
+NOTICE:  REVOCACION · nombre "version": 1 sobrecarga(s)
+NOTICE:  REVOCACION · prefijo sin coincidencias: dblink*  (correcto: un prefijo cubre lo que aun no existe)
+NOTICE:  REVOCACION · prefijo "has_*_privilege": 81 sobrecarga(s)
+NOTICE:  REVOCACION · prefijo "inet_*_addr": 2 sobrecarga(s)
+NOTICE:  REVOCACION · prefijo "lo_*": 18 sobrecarga(s)
+NOTICE:  REVOCACION · prefijo "pg_get_*": 39 sobrecarga(s)
+NOTICE:  REVOCACION · prefijo "pg_ls_*": 10 sobrecarga(s)
+NOTICE:  REVOCACION · prefijo "pg_read_*": 9 sobrecarga(s)
+NOTICE:  REVOCACION · prefijo "pg_*_size": 10 sobrecarga(s)
+NOTICE:  REVOCACION · prefijo "pg_sleep*": 3 sobrecarga(s)
+NOTICE:  REVOCACION · prefijo "pg_stat_get_*": 108 sobrecarga(s)
+NOTICE:  REVOCACION · prefijo "*_to_xml*": 14 sobrecarga(s)
+NOTICE:  REVOCACION · total de rutinas revocadas: 326
+>>> init: 04-datos.sql
+>>> init: completado sin errores.
+2026-08-03 02:02:36.431 UTC [647] ERROR:  cannot delete from view "pagos"
+2026-08-03 02:02:36.431 UTC [647] ERROR:  cannot execute DROP TABLE in a read-only transaction
+2026-08-03 02:02:36.432 UTC [647] ERROR:  permission denied for schema cartera at character 15
+2026-08-03 02:02:36.432 UTC [647] ERROR:  column "documento" does not exist at character 8
+2026-08-03 02:02:36.433 UTC [647] ERROR:  permission denied for function set_config
+2026-08-03 02:02:36.433 UTC [647] ERROR:  permission denied for function query_to_xml
+2026-08-03 02:02:36.434 UTC [647] ERROR:  permission denied for function has_table_privilege
+2026-08-03 02:02:36.434 UTC [647] ERROR:  permission denied for function current_setting
+2026-08-03 02:03:32.893 UTC [744] ERROR:  permission denied for view propietarios
+2026-08-03 02:03:32.893 UTC [744] ERROR:  cannot delete from view "pagos"
+2026-08-03 02:03:32.894 UTC [744] ERROR:  permission denied for schema cartera at character 13
+2026-08-03 02:03:32.894 UTC [744] ERROR:  permission denied for schema cartera
+2026-08-03 02:03:32.895 UTC [744] ERROR:  permission denied for view propietarios
+2026-08-03 02:03:32.895 UTC [744] WARNING:  no privileges were granted for "propietarios"
+
+### 2 · T-8 · aserciones de privilegios A-1..A-9
+============================= test session starts =============================
+platform win32 -- Python 3.13.14, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\USER\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\python.exe
+cachedir: .pytest_cache
+rootdir: E:\PROYECTOS\01-consultas-lenguaje-natural\cartera-consultas-ia
+plugins: anyio-4.8.0
+collecting ... collected 10 items
+
+tests/test_t8_privilegios.py::test_el_fichero_de_aserciones_tiene_las_nueve PASSED [ 10%]
+tests/test_t8_privilegios.py::test_asercion_de_privilegios[A-1] PASSED   [ 20%]
+tests/test_t8_privilegios.py::test_asercion_de_privilegios[A-2] PASSED   [ 30%]
+tests/test_t8_privilegios.py::test_asercion_de_privilegios[A-3] PASSED   [ 40%]
+tests/test_t8_privilegios.py::test_asercion_de_privilegios[A-4] PASSED   [ 50%]
+tests/test_t8_privilegios.py::test_asercion_de_privilegios[A-5] PASSED   [ 60%]
+tests/test_t8_privilegios.py::test_asercion_de_privilegios[A-6] PASSED   [ 70%]
+tests/test_t8_privilegios.py::test_asercion_de_privilegios[A-7] PASSED   [ 80%]
+tests/test_t8_privilegios.py::test_asercion_de_privilegios[A-8] PASSED   [ 90%]
+tests/test_t8_privilegios.py::test_a9_limite_de_conexiones 
+  A-9 · CONNECTION LIMIT de consulta_ro = 10 · max_connections de la instancia = 100
+PASSED        [100%]
+
+============================= 10 passed in 0.25s ==============================
+
+### 3 · invariantes de los datos sinteticos
+..................                                                       [100%]
+18 passed in 0.26s
+
+### 4 · verificacion manual §6.8 + anexo, como consulta_ro
+=== 1/10 · DELETE FROM pagos  -> DEBE FALLAR (sin privilegio DELETE; capa 1 real) ===
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:23: ERROR:  cannot delete from view "pagos"
+DETAIL:  Views that do not select from a single table or view are not automatically updatable.
+HINT:  To enable deleting from the view, provide an INSTEAD OF DELETE trigger or an unconditional ON DELETE DO INSTEAD rule.
+=== 2/10 · DROP TABLE cartera.cuotas  -> DEBE FALLAR (no es dueño, sin privilegios) ===
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:26: ERROR:  cannot execute DROP TABLE in a read-only transaction
+=== 3/10 · SELECT * FROM cartera.propietarios  -> DEBE FALLAR (esquema no alcanzable) ===
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:29: ERROR:  permission denied for schema cartera
+LINE 1: SELECT * FROM cartera.propietarios;
+                      ^
+=== 4/10 · SELECT documento FROM propietarios  -> DEBE FALLAR (columna no publicada) ===
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:32: ERROR:  column "documento" does not exist
+LINE 1: SELECT documento FROM propietarios;
+               ^
+=== 5/10 · set_config(...)  -> DEBE FALLAR (EXECUTE revocado) ===
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:35: ERROR:  permission denied for function set_config
+=== 6/10 · query_to_xml(...)  -> DEBE FALLAR (EXECUTE revocado) ===
+=== 7/10 · has_table_privilege(...)  -> DEBE FALLAR (EXECUTE revocado) ===
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:38: ERROR:  permission denied for function query_to_xml
+=== 8/10 · current_setting(text, boolean)  -> DEBE FALLAR (SOBRECARGA revocada) ===
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:41: ERROR:  permission denied for function has_table_privilege
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:44: ERROR:  permission denied for function current_setting
+=== 9/10 · SELECT relname FROM pg_class  -> DEBE FUNCIONAR (excepcion declarada, §6.7) ===
+          relname           
+----------------------------
+ pg_toast_16387
+ pg_toast_16387_index
+ propietarios_pkey
+ propietarios_documento_key
+ propietarios
+(5 rows)
+
+=== 10/10 · SELECT * FROM consulta.cuotas  -> DEBE FUNCIONAR ===
+ id | unidad_codigo |  periodo   |   valor   | saldo | estado | dias_vencida 
+----+---------------+------------+-----------+-------+--------+--------------
+  1 | 101           | 2025-01-01 | 553600.00 |  0.00 | pagada |            0
+  2 | 101           | 2025-02-01 | 553600.00 |  0.00 | pagada |            0
+  3 | 101           | 2025-03-01 | 553600.00 |  0.00 | pagada |            0
+  4 | 101           | 2025-04-01 | 553600.00 |  0.00 | pagada |            0
+  5 | 101           | 2025-05-01 | 553600.00 |  0.00 | pagada |            0
+(5 rows)
+
+
+=== ANEXO · con el cinturon QUITADO: que detiene la escritura de verdad ===
+SET
+--- A1 · DELETE sobre consulta.propietarios (vista AUTO-ACTUALIZABLE) ---
+    Esta es la prueba buena: la vista SI acepta DELETE por su forma, asi
+    que lo unico que puede detenerlo es el privilegio que no se concedio.
+    Resultado 2026-08-02: ERROR: permission denied for view propietarios
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:93: ERROR:  permission denied for view propietarios
+--- A2 · UPDATE sobre la misma vista ---
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:96: ERROR:  permission denied for view propietarios
+--- A3 · DELETE directo sobre la tabla base -> capa 2 ---
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:99: ERROR:  permission denied for schema cartera
+LINE 1: DELETE FROM cartera.pagos;
+                    ^
+--- A4 · DROP con el cinturon quitado -> capa 2, no el parametro ---
+--- A5 · M-15 · GRANT. ATENCION: NO da error, da WARNING y no concede nada ---
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:102: ERROR:  permission denied for schema cartera
+    Resultado 2026-08-02: WARNING: no privileges were granted ... y luego GRANT.
+    La sentencia se ejecuta CON EXITO y no surte efecto. Para T-2 esto
+    significa que la asercion de M-15 debe ser "ningun privilegio cambio",
+    NO "la sentencia fallo": esperar un error dejaria la prueba en rojo
+    con un sistema que se comporta correctamente.
+psql:/docker-entrypoint-initdb.d/datos/verificacion-manual.sql:110: WARNING:  no privileges were granted for "propietarios"
+GRANT
+--- A6 · §6.7 es peor de lo escrito: el nombre del INDICE filtra la columna ---
+    `documento` no se publica en ninguna vista, pero el indice UNIQUE que
+    la protege se llama propietarios_documento_key y pg_class lo enseña.
+          relname           
+----------------------------
+ propietarios_documento_key
+(1 row)
+
+
+### 5 · version del motor
+ PostgreSQL 16.10 (Debian 16.10-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+
+
+### 6 · PRUEBA DEL FALLO EN VOZ ALTA (2026-08-02)
+El fichero 03-revocaciones.sql afirma que si un NOMBRE de funcion no existe en
+el motor, el arranque falla en voz alta y nunca se comenta la linea. La
+afirmacion se comprobo sustituyendo temporalmente 'set_config' por
+'pg_funcion_que_no_existe' y levantando el contenedor desde cero.
+
+Resultado literal:
+
+  WARNING:  REVOCACION · nombre SIN COINCIDENCIAS: pg_funcion_que_no_existe
+            (se acumula para fallar al final)
+  ERROR:    Hay 1 nombre(s) de funcion en la politica que NO existen en este
+            motor: pg_funcion_que_no_existe. Corrige el nombre y vuelve a
+            ejecutar. NUNCA comentes la linea para que el arranque pase.
+
+  docker compose ps -> (vacio). El contenedor NO quedo levantado.
+
+El fichero se restauro y el arranque volvio a completarse sin errores, con las
+28 pruebas en verde. Un mecanismo de fallo que nunca se ha visto fallar es una
+intencion, no un mecanismo.
+
+### 7 · M-10 · TRUNCATE — la CUARTA atribucion, y la prediccion tambien fallo
+Prediccion de security-agent (§14.3): con search_path=consulta, `cuotas` es una
+VISTA, asi que el error seria de tipo de objeto ("cuotas is not a table").
+
+Ejecutado como consulta_ro, cinturon PUESTO (tal como llega M-10):
+
+  TRUNCATE TABLE cuotas;
+    ERROR:  cannot execute TRUNCATE TABLE in a read-only transaction
+  TRUNCATE TABLE cartera.cuotas;
+    ERROR:  cannot execute TRUNCATE TABLE in a read-only transaction
+  TRUNCATE TABLE propietarios;        -- vista AUTO-ACTUALIZABLE
+    ERROR:  cannot execute TRUNCATE TABLE in a read-only transaction
+
+La prediccion era incorrecta: el control de solo lectura actua ANTES que la
+comprobacion de tipo de objeto, y ANTES que el privilegio. Las tres variantes
+dan el mismo error.
+Consecuencia: M-02 (DROP) y M-10 (TRUNCATE) —dos de las quince filas de C2— hoy
+las detiene en el motor el mismo parametro reversible. Lo que hay debajo sigue
+sin medirse en los dos casos: es G4-SEC-1, que NO se ejecuto aqui por tener su
+propia condicion de puerta.
+
+### 8 · A-10 · linea base de cobertura de la revocacion
+El "326" de §14.8 cuenta OPERACIONES de revocacion, no rutinas. Las RUTINAS
+DISTINTAS son 324. La diferencia son inet_server_addr e inet_client_addr, que
+estan cubiertas a la vez por un nombre exacto y por el prefijo inet_*_addr, asi
+que se revocan dos veces. La suma de coincidencias por patron si da 326.
+Se versionan los dos numeros con su significado en datos/linea-base-revocaciones.json.
+
+  NOTICE: REVOCACION · operaciones emitidas: 326 · RUTINAS DISTINTAS revocadas: 324
+
+Familias notables [V-motor]: has_*_privilege=81 · pg_stat_get_*=108 ·
+pg_get_*=39 · lo_*=18 · *_to_xml*=14 · pg_ls_*=10 · pg_*_size=10 ·
+generate_series=9 · pg_read_*=9 · pg_sleep*=3 · current_setting=2 · dblink*=0

@@ -1,0 +1,15 @@
+{
+  "_que_es_esto": "La huella de los datos sinteticos versionados (D9). Se capturo del motor real tras cargar 04-datos.sql, no se calculo a mano. Si cambia, cambian las respuestas esperadas del banco y C1 deja de ser comparable: hay que recalcular valores-esperados.md y volver a medir, en el mismo commit.",
+  "_como_se_regenera": "python datos/generar.py && docker compose down -v && docker compose up -d && python -m pytest tests/test_datos_invariantes.py",
+  "capturada_el": "2026-08-02",
+  "motor": "PostgreSQL 16.10 (imagen postgres:16)",
+  "semilla_del_generador": 20260727,
+  "conteos": {
+    "propietarios": 48,
+    "unidades": 60,
+    "cuotas": 1176,
+    "pagos": 994
+  },
+  "total_filas": 2278,
+  "suma_de_comprobacion": "91300edeab80b162d34ae0ae2d2098c5"
+}

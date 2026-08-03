@@ -1,0 +1,17 @@
+# Credenciales: nunca al repositorio.
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editores / sistema
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini

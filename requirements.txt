@@ -1,0 +1,32 @@
+# =====================================================================
+# Dependencias. Sin compilacion nativa (DR-6 / RNF-11): todas se instalan
+# desde rueda precompilada, para que `pip install -r requirements.txt`
+# funcione en una maquina limpia sin cadena de compilacion.
+# =====================================================================
+
+# Analizador de SQL: convierte el texto en un arbol recorrible. Es lo que
+# permite que la capa 3 decida sobre la ESTRUCTURA de la consulta y no sobre
+# el prefijo del texto (RNF-03) — sin el, M-09 (una escritura anidada dentro
+# de un WITH) pasaria.
+# Version VERIFICADA en la maquina de desarrollo el 2026-08-02: 30.14.0.
+# Se fija exacta: una divergencia entre lo que sqlglot entiende y lo que
+# PostgreSQL ejecuta es un riesgo declarado (R-19), y no puede cambiar sola.
+sqlglot==30.14.0
+
+# Driver de PostgreSQL. La rueda `binary` evita compilar libpq.
+# NO fijo version exacta porque NO la he verificado en esta maquina; se fija
+# en el commit en que se resuelva el entorno por primera vez. Escribir aqui
+# un numero que no he comprobado seria inventar un dato.
+psycopg[binary]
+
+# Lector del catalogo y del banco. Mismo criterio de version.
+# PyYAML 6.0.3 esta instalado en la maquina de desarrollo (verificado).
+PyYAML
+
+# Pruebas. T-8 es la primera del repositorio y ya es ejecutable.
+pytest
+
+# Cobertura. Se mide ACOTADA AL PAQUETE DEL GUARDIAN (`--cov=guardian`), no
+# sobre todo el repositorio: un umbral global se sube escribiendo pruebas de
+# cualquier cosa, y lo que hay que medir es la capa 3.
+pytest-cov

@@ -1,0 +1,50 @@
+# =====================================================================
+# Entorno local. HOY SOLO HAY BASE DE DATOS.
+#
+# El servicio `app` NO existe todavia y no se declara vacio: entra en I-2'
+# (guardian + API) e I-6 (pantalla). Declarar un servicio que no arranca
+# nada seria afirmar en el compose algo que el repositorio no tiene.
+# Por lo mismo, RNF-11 ("un comando en maquina limpia") aun NO esta
+# demostrado: hoy `docker compose up` levanta la base, no el sistema.
+#
+# Arranque:
+#   cp .env.example .env      (y cambia las claves)
+#   docker compose up -d
+#
+# El init corre UNA sola vez, con el volumen vacio. Para volver a probarlo
+# desde cero:  docker compose down -v && docker compose up -d
+# =====================================================================
+services:
+  db:
+    # postgres:16 — version fijada a proposito. El comportamiento de
+    # `REVOKE EXECUTE`, el conjunto de sobrecargas de cada funcion del
+    # sistema y las aserciones de privilegios dependen de la version del
+    # motor: dejarla flotante haria que T-8 midiera un motor distinto cada
+    # dia. Cambiar de version obliga a volver a correr G3-SEC-1.
+    image: postgres:16
+    container_name: cartera_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cartera_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-cartera}
+      # Clave del rol restringido. Es una credencial distinta de la del
+      # dueño a proposito: la aplicacion NUNCA se conecta como dueño.
+      CLAVE_RO: ${CLAVE_RO:?falta CLAVE_RO}
+    ports:
+      # 5433 en el anfitrion para no chocar con un PostgreSQL local.
+      - "${PUERTO_DB:-5433}:5432"
+    volumes:
+      - ./docker/00-inicializar.sh:/docker-entrypoint-initdb.d/00-inicializar.sh:ro
+      # `datos` se monta como DIRECTORIO: el entrypoint de la imagen ignora
+      # los directorios, asi que estos .sql los ejecuta el script de arriba
+      # en el orden correcto y no el entrypoint por orden alfabetico.
+      - ./datos:/docker-entrypoint-initdb.d/datos:ro
+      - cartera_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cartera_owner} -d ${POSTGRES_DB:-cartera}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  cartera_pgdata:

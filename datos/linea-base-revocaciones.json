@@ -1,0 +1,56 @@
+{
+  "_que_es_esto": "Linea base de la asercion A-10: cuantas rutinas cubre cada patron de la politica de revocacion. Capturada del motor real, no calculada a mano. Convierte el recuento de una anecdota de la corrida en un control vivo.",
+
+  "_como_se_lee_un_fallo": {
+    "un_recuento_BAJA": "REGRESION. Algo dejo de revocarse. No se actualiza la linea base: se averigua que paso.",
+    "un_prefijo_cae_a_CERO_habiendo_tenido_coincidencias": "Casi siempre un PREFIJO MAL ESCRITO. Es el hueco exacto que A-10 existe para tapar: un prefijo mal escrito solo produce un AVISO en el arranque, y quien lo lea creera que la familia esta cubierta.",
+    "un_recuento_SUBE": "El motor cambio de version y trae sobrecargas nuevas. Se revisa que las nuevas sean de la misma familia y se actualiza esta linea base EN EL MISMO COMMIT, con la version del motor.",
+    "_por_que_subir_tambien_falla": "El diseño pide que subir 'se reporte y se revise'. Un test que imprime y pasa no lo lee nadie. Fallar es el mecanismo por el que la revision ocurre de verdad; el mensaje distingue las dos direcciones."
+  },
+
+  "_los_dos_numeros_no_son_el_mismo": {
+    "suma_de_coincidencias_por_patron": 326,
+    "rutinas_distintas_revocadas": 324,
+    "por_que_diferen": "inet_server_addr e inet_client_addr estan cubiertas a la vez por un nombre exacto y por el prefijo inet_*_addr, asi que se revocan dos veces. La redundancia es deliberada (la lista de modelo-datos §6.5 y la de §7.5 se declararon por separado) y es inofensiva. El 326 del registro de arranque cuenta OPERACIONES de revocacion; las RUTINAS son 324."
+  },
+
+  "capturada_el": "2026-08-02",
+  "motor": "PostgreSQL 16.10 (imagen postgres:16)",
+
+  "por_patron": {
+    "nombre|col_description": 1,
+    "nombre|current_database": 1,
+    "nombre|current_schemas": 1,
+    "nombre|current_setting": 2,
+    "nombre|generate_series": 9,
+    "nombre|inet_client_addr": 1,
+    "nombre|inet_client_port": 1,
+    "nombre|inet_server_addr": 1,
+    "nombre|inet_server_port": 1,
+    "nombre|obj_description": 2,
+    "nombre|pg_backend_pid": 1,
+    "nombre|pg_conf_load_time": 1,
+    "nombre|pg_current_logfile": 2,
+    "nombre|pg_postmaster_start_time": 1,
+    "nombre|pg_relation_filepath": 1,
+    "nombre|pg_stat_file": 2,
+    "nombre|set_config": 1,
+    "nombre|shobj_description": 1,
+    "nombre|to_regclass": 1,
+    "nombre|version": 1,
+    "prefijo|*_to_xml*": 14,
+    "prefijo|dblink*": 0,
+    "prefijo|has_*_privilege": 81,
+    "prefijo|inet_*_addr": 2,
+    "prefijo|lo_*": 18,
+    "prefijo|pg_*_size": 10,
+    "prefijo|pg_get_*": 39,
+    "prefijo|pg_ls_*": 10,
+    "prefijo|pg_read_*": 9,
+    "prefijo|pg_sleep*": 3,
+    "prefijo|pg_stat_get_*": 108,
+    "total|rutinas_distintas_revocadas": 324
+  },
+
+  "_nota_dblink": "0 es el resultado CORRECTO y esperado: confirma que la extension no esta instalada, que es lo que afirma A-7. Cero no es un fallo del prefijo. Pero un cero en CUALQUIER OTRO patron de esta tabla si lo es, porque todos los demas tuvieron coincidencias."
+}

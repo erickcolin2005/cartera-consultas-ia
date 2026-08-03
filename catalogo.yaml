@@ -1,0 +1,200 @@
+# =====================================================================
+# catalogo.yaml — FUENTE UNICA
+# Transcripcion literal de F2-diseno/modelo-datos.md rev. 3, §7.1 a §7.5.
+#
+# ESTE FICHERO ALIMENTA TRES COSAS, Y POR ESO ESTA EN UN SOLO SITIO:
+#   (a) el texto que se envia al modelo,
+#   (b) las CUATRO LISTAS BLANCAS del guardian,
+#   (c) el alcance publicado en la pantalla (RF-06).
+#
+# POR QUE LAS LISTAS BLANCAS VIVEN AQUI Y NO EN EL CODIGO
+#   Un cambio en cualquiera de ellas tiene que ser visible en un diff de una
+#   linea y revisable por alguien que no lea Python. Si se duplican en el
+#   codigo, CD1 se erosiona sin que nadie lo note (R-20).
+#
+# REGLA QUE GOBIERNA EL CONTENIDO
+#   Ni una fila, ni una muestra, ni un valor tomado de una tabla. Todo escrito
+#   a mano (D6). Lo que sale hacia el proveedor del modelo es metadato de
+#   negocio — y el texto literal que escribe el usuario, que NO es lo mismo y
+#   se declara aparte (§7.4).
+#
+# ESTADO EN I-1
+#   Todavia no lo lee nadie: el guardian y el constructor de contexto entran
+#   en I-2'. Esta aqui porque es DATO, no codigo, y porque las listas blancas
+#   tienen que existir antes que el codigo que las aplica — no despues.
+# =====================================================================
+
+# --- §7.1 · Diccionario semantico -------------------------------------
+fecha_corte: 2026-07-05
+como_decir_hoy: "consulta.fecha_corte()"    # nunca CURRENT_DATE (RN-07)
+
+conceptos:
+  - relacion: consulta.unidades
+    negocio: "Los inmuebles de la copropiedad: apartamentos, locales y parqueaderos.
+              Cada unidad tiene un propietario responsable del pago."
+    columnas:
+      - {n: codigo,             tipo: texto,   negocio: "Identificador visible de la unidad, p.ej. '302'"}
+      - {n: torre,              tipo: texto,   negocio: "Bloque del conjunto"}
+      - {n: tipo,               tipo: texto,   negocio: "Clase de inmueble"}
+      - {n: coeficiente,        tipo: decimal, negocio: "Participacion de la unidad en los gastos comunes"}
+      - {n: propietario_nombre, tipo: texto,   negocio: "Nombre del propietario responsable"}
+
+  - relacion: consulta.cuotas
+    negocio: "Lo que se le factura a cada unidad cada mes. Una fila por unidad, mes y concepto."
+    columnas:
+      - {n: periodo,           tipo: fecha,   negocio: "Mes al que corresponde la cuota (primer dia del mes)"}
+      - {n: concepto,          tipo: texto,   negocio: "Tipo de cobro"}
+      - {n: valor,             tipo: dinero,  negocio: "Monto facturado"}
+      - {n: fecha_vencimiento, tipo: fecha,   negocio: "Dia en que la cuota debia estar pagada (dia 10 del mes)"}
+      - {n: valor_pagado,      tipo: dinero,  negocio: "Suma de los abonos recibidos para esta cuota"}
+      - {n: saldo,             tipo: dinero,  negocio: "Lo que falta por pagar de esta cuota. Nunca es negativo"}
+      - {n: estado,            tipo: texto,   negocio: "Situacion de la cuota a la fecha de corte"}
+      - {n: dias_vencida,      tipo: entero,  negocio: "Dias desde el vencimiento si hay saldo; 0 si no"}
+
+  - relacion: consulta.pagos
+    negocio: "Los abonos recibidos. Cada fila abona a UNA cuota. Un mismo giro que cubre
+              varios meses aparece como varias filas con la misma referencia."
+    columnas:
+      - {n: fecha_pago,     tipo: fecha, negocio: "Dia en que la copropiedad recibio el dinero"}
+      - {n: periodo_cuota,  tipo: fecha, negocio: "Mes de la cuota a la que se aplico este abono"}
+      - {n: referencia,     tipo: texto, negocio: "Agrupa los abonos hechos en un mismo giro"}
+
+reglas_de_negocio:
+  - "Una cuota esta vencida si tiene saldo y su fecha de vencimiento es anterior a la fecha de corte.
+     No hay periodo de gracia."                                                          # RN-01
+  - "La cuota de administracion de un mes se emite el dia 1 y vence el dia 10 del mismo mes."  # RN-02
+  - "Una unidad esta en mora si tiene al menos una cuota con estado 'vencida'."           # RN-01
+  - "Un propietario puede tener varias unidades; cada unidad tiene un solo propietario."   # RN-06
+  - "No se cobran intereses de mora: los saldos son solo capital."                         # RN-04
+  - "No hay pagos anticipados ni saldos a favor."                                          # RN-05
+
+# --- §7.2 · Enumeracion de valores permitidos -------------------------
+valores_permitidos:
+  consulta.unidades.torre:    ["A", "B", "C"]
+  consulta.unidades.tipo:     ["apartamento", "local", "parqueadero"]
+  consulta.cuotas.concepto:   ["administracion", "extraordinaria"]
+  consulta.cuotas.estado:     ["pagada", "vencida", "corriente"]
+  consulta.pagos.medio_pago:  ["transferencia", "pse", "efectivo", "cheque"]
+
+# Los rangos importan para D-D. Sin ellos, "¿cuanto se recaudo en 2023?"
+# produce una tabla vacia —que el usuario lee como "no se recaudo nada"— en vez
+# de "el conjunto empieza en enero de 2025".
+# COMPROBADOS contra los datos cargados el 2026-08-02 por
+# tests/test_datos_invariantes.py::test_los_rangos_publicados_en_el_catalogo_son_ciertos
+rangos:
+  consulta.cuotas.periodo:    {desde: "2025-01-01", hasta: "2026-07-01"}
+  consulta.pagos.fecha_pago:  {desde: "2025-01-10", hasta: "2026-07-04"}
+
+# --- §7.3 · Ausencias declaradas — el bloque que habilita D-D ---------
+NO_hay_datos_de:
+  - "satisfaccion, encuestas o calificaciones de residentes"        # S-01
+  - "reservas de zonas comunes, salon social, BBQ o gimnasio"       # S-02  (D10)
+  - "PQRS, peticiones, quejas o reclamos"                           # S-03
+  - "intereses de mora"                                             # RN-04
+  - "acuerdos de pago o refinanciaciones"
+  - "presupuesto, gastos o proveedores de la copropiedad"
+  - "asambleas, actas o votaciones"
+  - "arrendatarios o residentes que no sean propietarios"
+  # ULTIMA LINEA, ANOTADA POR security-agent: es una regla de OCULTACION que
+  # vive en el prompt. NO viola CD1 porque la contencion no depende de ella
+  # —la vista no publica esas columnas y el motor las rechaza—, pero es
+  # exactamente la linea que un cambio futuro puede convertir en la unica
+  # defensa sin que nadie lo note (R-20). Si alguna vez se publican esas
+  # columnas en una vista, esta linea deja de ser cierta y hay que QUITARLA
+  # del catalogo, no confiar en ella.
+  - "contacto de los propietarios: telefono, correo o documento"
+
+# =====================================================================
+# §7.5 · LAS CUATRO LISTAS BLANCAS DEL GUARDIAN
+# =====================================================================
+
+# ---- 1. Relaciones permitidas (regla S3) ----
+relaciones_permitidas:
+  - consulta.unidades
+  - consulta.propietarios
+  - consulta.cuotas
+  - consulta.pagos
+# Nada mas. El catalogo del motor no esta aqui, y por eso M-12 se rechaza (S3).
+
+# ---- 2. Funciones permitidas (regla S4) — CORTA Y CERRADA ----
+funciones_permitidas:
+  agregados:   [count, sum, avg, min, max]
+  fecha:       [date_trunc, extract, to_char, age, make_date]
+  texto:       [lower, upper, trim, concat, coalesce, length]
+  numero:      [round, abs, greatest, least]
+  condicional: [nullif]                     # CASE es un nodo, no una funcion
+  propias:     ["consulta.fecha_corte"]     # RN-07: la forma de decir "hoy"
+# TODO lo demas se rechaza (S4). Debajo hay REVOKE EXECUTE (datos/03-revocaciones.sql).
+#
+# REGLA DE PROCESO — es una condicion, no un consejo (R-16):
+#   ampliar esta lista exige (a) una prueba que justifique la ampliacion y
+#   (b) REVISION DE SEGURIDAD explicita en el mismo commit.
+#   El modo de fallo mas probable a medio plazo no es un ataque: es que una
+#   consulta legitima falle, alguien añada una funcion para arreglarlo, y con
+#   ella entre un vector.
+
+# ---- PROHIBIDOS SIEMPRE — POR PREFIJO ----
+# Los prefijos ENVEJECEN MEJOR que los nombres sueltos: cubren las sobrecargas
+# y las funciones que aun no existen.
+prohibidos_siempre:
+  por_prefijo:
+    - "pg_sleep*"          # pg_sleep, pg_sleep_for, pg_sleep_until
+    - "has_*_privilege"    # has_table_privilege y familia. LA MAS AFILADA:
+                           #   booleano + error si no existe + argumentos de
+                           #   TEXTO PLANO. No necesita CAST ni nodo de
+                           #   relacion: ni S3 ni S7a la ven. Solo S4 esta
+                           #   entre esto y un oraculo de existencia perfecto.
+    - "pg_*_size"          # pg_relation_size, pg_total_relation_size...
+    - "pg_stat_get_*"      # la forma de FUNCION de las vistas de estadisticas
+    - "pg_get_*"           # pg_get_viewdef, pg_get_functiondef, pg_get_expr...
+    - "pg_ls_*"            # pg_ls_dir, pg_ls_logdir, pg_ls_waldir
+    - "pg_read_*"          # pg_read_file, pg_read_binary_file
+    - "*_to_xml*"          # query_to_xml, table_to_xml, cursor_to_xml...
+    - "lo_*"               # lo_import, lo_export
+    - "dblink*"
+    - "inet_*_addr"        # inet_server_addr, inet_client_addr
+  por_nombre:
+    - current_setting      # introspeccion GENERICA: una entrada abre TODOS los parametros
+    - set_config           # lo mismo en el otro sentido: desactiva la capa 1
+    - to_regclass          # oraculo de existencia silencioso
+    - version
+    - current_schemas
+    - pg_relation_filepath
+    - pg_current_logfile
+    - generate_series      # generador de filas arbitrario: amplifica M-13
+    - obj_description
+    - col_description
+    - shobj_description
+
+# ---- 3. Tipos de dato permitidos en un CAST (regla S7a) ----
+tipos_permitidos:
+  - integer
+  - bigint
+  - numeric
+  - text
+  - date
+  - timestamp
+  - boolean
+# NO estan: regclass, regproc, regtype, oid, xml, json ni ningun tipo de
+# identificador de objeto. `'cartera.propietarios'::regclass` es un ORACULO DE
+# EXISTENCIA (M-19), y S7a es LA UNICA DEFENSA POSIBLE contra el: no es una
+# funcion, asi que no hay nada que revocar. Es el unico control del sistema
+# sin ninguna capa debajo, y asi esta declarado.
+# CUIDADO: S7a NO cubre las conversiones IMPLICITAS — sin nodo CAST no hay
+# nada que comprobar, y la contencion recae en S4.
+
+# ---- 4. Tipos de nodo permitidos (reglas S5 y S7b) ----
+# Se enumeran en el modulo del guardian porque son nombres del analizador y
+# cambian si cambia sqlglot. La REGLA vive aqui:
+politica_de_nodos:
+  regla: "lista blanca. Lo que no esta enumerado se rechaza (S5)."
+  prohibidos_siempre:
+    - "cualquier nodo opaco o no modelado por el analizador"   # S7b
+  # S5 comprueba TIPO, MODIFICADORES y AUTORREFERENCIA de un CTE (DR-13):
+  # enumerar tipos de nodo no dice nada de sus modificadores, y un modificador
+  # puede cambiar por completo la semantica de ejecucion de un nodo aprobado.
+  # `WITH RECURSIVE` es el caso que lo destapo.
+  # NOTA: NO se lista "cualquier nodo que transporte SQL como texto". No es
+  # detectable estructuralmente: un literal es una cadena, y saber si contiene
+  # SQL exigiria heuristicas que ADR-04 rechaza. La familia query_to_xml la
+  # cierran S4 y el REVOKE EXECUTE, NO la politica de nodos.
