@@ -163,9 +163,16 @@ def _escribir(ruta: Path, texto: str) -> None:
     ruta.write_text(texto, encoding="utf-8", newline="")
 
 
+# `-P` no mete el directorio actual en `sys.path`, igual que hace el CI al
+# invocar `pytest` a secas. Sin el, esta herramienta correria en condiciones
+# mas indulgentes que el build, y una importacion rota pasaria inadvertida en
+# local hasta llegar a GitHub. Ya paso una vez.
+_PYTEST = [sys.executable, "-P", "-m", "pytest"]
+
+
 def _pytest(selector: str) -> int:
     return subprocess.run(
-        [sys.executable, "-m", "pytest", selector, "-q", "--no-header", "-x"],
+        [*_PYTEST, selector, "-q", "--no-header", "-x"],
         cwd=RAIZ,
         capture_output=True,
         text=True,
@@ -235,8 +242,7 @@ def cifra_de_la_pantalla() -> bool:
     # comprobacion decia 213 frente a 212 — una diferencia de uno que resultaba
     # ser exactamente esa distincion.
     salida = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q"],
-        cwd=RAIZ, capture_output=True, text=True,
+        [*_PYTEST, "-q"], cwd=RAIZ, capture_output=True, text=True,
     )
     en_verde = re.search(r"(\d+)\s+passed", salida.stdout)
     if not en_verde:
