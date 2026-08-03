@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from guardian.catalogo import Catalogo  # noqa: E402
 from guardian.contrato import LIMITE_FILAS  # noqa: E402
-from guardian.ejecutor import ejecutar  # noqa: E402
+from app.ejecutor import ejecutar  # noqa: E402
 from guardian.nucleo import veredicto  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parent.parent

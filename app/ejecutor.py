@@ -41,7 +41,7 @@ from dataclasses import dataclass, field
 
 import psycopg
 
-from .contrato import LIMITE_FILAS, Veredicto
+from guardian.contrato import LIMITE_FILAS, Veredicto
 
 
 @dataclass
