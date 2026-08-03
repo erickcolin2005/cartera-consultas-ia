@@ -50,8 +50,10 @@ Y una cuarta que sostiene a las otras tres: **la regla no vive en el texto que
 se le manda al modelo.** Vive en código y tiene prueba. Si alguien la desactiva,
 el build cae.
 
-Eso último ya no es una promesa. Se comprobó desactivando reglas a mano el
-2026-08-02, y las dos veces el build se puso en rojo:
+Eso último ya no es una promesa, y ya no depende de que alguien se acuerde de
+comprobarlo. **Se comprueba en cada `push`**: `herramientas/sensibilidad.py`
+apaga cinco reglas, una a una, y exige que cada una tumbe su prueba. Empezó
+siendo una comprobación a mano el 2026-08-02, con estos dos casos:
 
 | Regla desactivada | Qué pasó |
 |---|---|
@@ -295,15 +297,23 @@ Python 3.13.14, sqlglot 30.14.0. La salida literal está en
 | **T-1 · C2 = 15/15 y C2′ = 12/12**, sin modelo, sin base de datos y sin coste | `pytest tests/test_t1_banco.py` |
 | **T-5 · el guardián no tiene por dónde filtrar nada** (prueba estructural) | `pytest tests/test_t5_fuga.py` |
 | **Cobertura del guardián: 92%** (el umbral exigido es 70%) | `pytest --cov=guardian` |
+| **T-11 · la bitácora no se puede falsificar** (caso M-30) | `pytest tests/test_t11_bitacora.py` |
+| **Apagar cinco reglas a propósito tumba el build, cada una en su prueba** | `python herramientas/sensibilidad.py` |
+| **El build existe**: tres trabajos, uno de ellos sin base de datos | `.github/workflows/pruebas.yml` |
 
 ### ❌ Todavía no existe
 
-La **API**, la **pantalla**, el **adaptador del modelo**, el constructor de
-contexto, la bitácora y el traductor de errores. Con ellos, seis de las trece
-pruebas: **T-2** (degradación), **T-6** (los cuatro tipos de respuesta),
-**T-7** (sentencias enviadas), **T-10** (superficie de salida y CSP),
-**T-11** (bitácora) y **T-12** (traductor). Están nombradas para que su ausencia
-sea visible en vez de deducible.
+El **adaptador del modelo**, el constructor de contexto y el traductor de
+errores completo. Con ellos, cinco de las trece pruebas: **T-2** (degradación),
+**T-6** (los cuatro tipos de respuesta), **T-7** (sentencias enviadas),
+**T-10** (superficie de salida y CSP) y **T-12** (traductor). Están nombradas
+para que su ausencia sea visible en vez de deducible.
+
+**T-7 merece una línea aparte.** El contador de sentencias enviadas es la cifra
+sobre la que descansa el bloque de rechazo entero, y **no tiene prueba**: hoy
+nadie impide que alguien lo deje clavado en cero. La mutación que lo destaparía
+está escrita y comentada en `herramientas/sensibilidad.py`, desactivada, porque
+una mutación sin prueba que tumbar no mide nada.
 
 **Lo que este repositorio puede afirmar hoy:**
 
@@ -566,15 +576,38 @@ de verificación que solo enseña lo que sale bien no verifica nada.
 │   ├── catalogo.py             ← las listas blancas ya cargadas (no lee ficheros)
 │   ├── politica.py             ← traducción entre catalogo.yaml y el analizador
 │   └── nucleo.py               ← veredicto(): las reglas S0…S7
+├── app/                        ← lo que SÍ toca el mundo: red, disco y reloj
+│   ├── ejecutor.py             ← Veredicto → Resultado. El contador vive aquí
+│   ├── bitacora.py             ← un evento JSON por línea, serializado
+│   └── servidor.py             ← la pantalla. Sin JavaScript
+├── herramientas/
+│   └── sensibilidad.py         ← apaga reglas y exige que el build caiga
 ├── tests/
 │   ├── test_t8_privilegios.py  ← la primera prueba del repositorio
 │   ├── test_datos_invariantes.py
 │   ├── test_t1_banco.py        ← T-1 · los 52 casos al guardián. ROMPE EL BUILD
 │   ├── test_t5_fuga.py         ← T-5 · estructural. ROMPE EL BUILD
+│   ├── test_t11_bitacora.py    ← T-11 · M-30, falsificación. ROMPE EL BUILD
 │   └── test_guardian_reglas.py ← T-3, T-4, T-9, T-13, S5b/S5c, falsos positivos
+├── .github/workflows/
+│   └── pruebas.yml             ← el build. Tres trabajos, ver §8.1
 └── evidencia/
     └── I-1/                    ← salida literal de lo ejecutado el 2026-08-02
 ```
+
+### 8.1 · Qué comprueba el build
+
+| Trabajo | Qué demuestra |
+|---|---|
+| `guardián · sin base de datos` | Que el guardián es **puro**. No se le crea `.env`: si alguna de esas pruebas empezara a necesitar una conexión, el trabajo se cae. Exige además **cobertura ≥ 70%** acotada a `guardian/` |
+| `las reglas apagadas tumban el build` | Apaga cinco reglas, una a una, y **exige que cada una tumbe la prueba que le corresponde** — no que «algo» se ponga rojo |
+| `sistema completo · PostgreSQL real` | Levanta la base con **el mismo `docker compose up` que documenta este README**, no con un atajo del CI, y corre la suite entera |
+
+**Por qué el segundo trabajo comprueba el selector y no solo el código de
+salida.** Al desactivar el nodo de borrado de S2, la carga puede seguir
+contenida —otra regla la atrapa— y aun así la prueba tiene que caer, porque
+afirma **por qué regla** salió. Una prueba que solo dijera «fue rechazado»
+habría seguido en verde con la regla apagada.
 
 **Dos decisiones del repositorio que no son organización de ficheros:**
 
@@ -601,6 +634,7 @@ de verificación que solo enseña lo que sale bien no verifica nada.
 | I-4 | Repregunta, «no hay datos», integración real con el proveedor | ⏳ |
 | I-5 | Editar y reejecutar la consulta con las mismas comprobaciones | ⏳ |
 | I-6 | La pantalla | ⏳ |
+| — | **Bitácora (T-11) y el build (CI)** · las dos frases que la pantalla afirmaba sin cumplir | ✅ **hecho** |
 | I-7 | Ejecución completa del banco y tabla de resultados **con los fallos** | ⏳ |
 | I-8 | README como entregable de presentación | ⏳ |
 | I-9 | Demo pública *(opcional, no bloqueante)* | ⏳ |

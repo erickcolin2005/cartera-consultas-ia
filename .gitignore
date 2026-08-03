@@ -1,6 +1,12 @@
 # Credenciales: nunca al repositorio.
 .env
 
+# La bitacora. Lleva el texto LITERAL de lo que escribe quien visita, y el
+# aviso de la pantalla pide que no sean datos reales pero no puede impedirlo.
+# Versionarla convertiria ese texto en historia permanente de git, donde
+# borrarlo despues ya no sirve de nada.
+bitacora.jsonl
+
 # Python
 __pycache__/
 *.py[cod]

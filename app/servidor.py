@@ -37,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from guardian.catalogo import Catalogo  # noqa: E402
 from guardian.contrato import LIMITE_FILAS  # noqa: E402
+from app import bitacora  # noqa: E402
 from app.ejecutor import ejecutar  # noqa: E402
 from guardian.nucleo import veredicto  # noqa: E402
 
@@ -131,7 +132,8 @@ alguien <strong>va a intentar romperlo</strong>, y está construido para eso.</p
 <li>Enseña la consulta que se ejecutó, para que puedas comprobarla.</li>
 </ol>
 <p class="cd">Las reglas viven en código y tienen prueba: si se desactiva una,
-el build cae. Hoy: <strong>163 pruebas en verde</strong>.</p>
+el build cae — y eso también se comprueba, apagando reglas a propósito en cada
+cambio. Hoy: <strong>188 pruebas en verde</strong>.</p>
 
 <form method="get" action="/">
 <label for="sql">Escribe una consulta SQL (máximo {TOPE_SQL} caracteres)</label>
@@ -152,12 +154,18 @@ No escribas datos personales reales.</p>
 """
 
 
-def bloque_rechazo(v, r) -> str:
+def bloque_rechazo(v, r, registrado: bool) -> str:
     """El rechazo NO es un error: es la funcionalidad estrella.
 
     El paso 3 muestra un NUMERO MEDIDO, no un adjetivo. La linea de apoyo se
     adelanta a la objecion que el revisor se iba a hacer en silencio: «¿y quien
     me dice que ese contador no esta siempre en cero?».
+
+    El paso 4 dice lo que DE VERDAD paso al escribir la bitacora. Durante un
+    tiempo esa linea decia «si» fijo y no habia bitacora ninguna: una
+    afirmacion en pantalla que nadie media, que es justo el defecto que este
+    proyecto existe para no cometer. Ahora es el booleano que devuelve
+    `bitacora.registrar`, y si el disco falla la pantalla dice «no».
     """
     return f"""
 <section class="rechazo">
@@ -168,7 +176,7 @@ def bloque_rechazo(v, r) -> str:
 <li>Se recibió la consulta. <b>sí</b></li>
 <li>La comprobación previa la revisó y la rechazó por la regla {e(v.regla)}. <b>sí</b></li>
 <li>Sentencias enviadas a la base de datos: <b class="cero">{r.sentencias_enviadas}</b></li>
-<li>El intento quedó registrado. <b>sí</b></li>
+<li>El intento quedó registrado. <b>{"sí" if registrado else "no"}</b></li>
 </ol>
 <p class="apoyo">Ese {r.sentencias_enviadas} no es una frase mía: es un contador que
 envuelve la conexión y cuenta cada sentencia que sale hacia el motor. Cuando una
@@ -265,12 +273,17 @@ class Manejador(BaseHTTPRequestHandler):
 
         v = veredicto(sql, CATALOGO)
         r = ejecutar(v)
+        # Se registra SIEMPRE, no solo los rechazos. RF-11 solo exige el
+        # intento rechazado, pero una bitacora que solo tiene rechazos no deja
+        # calcular la proporcion, que es lo que convierte el registro en un
+        # dato y no en una anecdota.
+        registrado = bitacora.registrar(v, r)
         if v.permitido:
             cuerpo = bloque_resultado(v, r)
         elif v.admite_reintento:
             cuerpo = bloque_coherencia(v, r)
         else:
-            cuerpo = bloque_rechazo(v, r)
+            cuerpo = bloque_rechazo(v, r, registrado)
         return self._envia(pagina(cuerpo + cabecera()), "text/html")
 
     def _envia(self, datos: bytes, tipo: str, codigo: int = 200):

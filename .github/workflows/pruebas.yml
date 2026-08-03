@@ -1,0 +1,157 @@
+# =====================================================================
+# El build.
+#
+# El README lleva escrito desde el principio que «si alguien desactiva una
+# regla, el build cae». Durante un tiempo esa frase no se sostenia por una
+# razon simple: NO HABIA BUILD. La comprobacion se habia hecho a mano una vez,
+# el 2026-08-02, y quedo anotada — pero una comprobacion manual no protege del
+# cambio que se hara dentro de seis meses.
+#
+# SON DOS TRABAJOS, Y LA SEPARACION ES LA AFIRMACION
+# ---------------------------------------------------
+# `guardian` corre SIN base de datos, SIN modelo y SIN red. No es una
+# optimizacion de tiempo: es la prueba de una propiedad declarada. El guardian
+# es puro, y por eso los 52 casos del banco se pueden medir sin levantar nada.
+# Si alguien metiera una conexion dentro de `guardian/`, este trabajo se caeria
+# — y ademas lo cazaria T-5, que lee el codigo fuente.
+#
+# `sistema` levanta PostgreSQL de verdad con `docker compose`, porque las
+# pruebas de privilegios (T-8) miden el motor, no una imitacion. `conftest.py`
+# NO se salta si falta la base: falla. Una prueba de seguridad que se salta
+# sola cuando no encuentra el entorno es una prueba que un dia deja de correr
+# sin que nadie se entere.
+# =====================================================================
+
+name: pruebas
+
+on:
+  push:
+  pull_request:
+  # Manual, para poder relanzarlo sin inventar un commit vacio.
+  workflow_dispatch:
+
+jobs:
+  # -------------------------------------------------------------------
+  # 1 · El guardian solo. Sin base de datos, sin modelo, sin red.
+  # -------------------------------------------------------------------
+  guardian:
+    name: guardián · sin base de datos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Fijada a la version de la maquina de desarrollo (3.13). Dejarla
+          # flotante haria que el CI midiera un interprete distinto cada mes.
+          python-version: "3.13"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # NO se crea `.env` en este trabajo, a proposito. Si alguna de estas
+      # pruebas empezara a necesitar una base de datos, aqui se caeria.
+      - name: T-1, T-5 y las reglas — 52 casos del banco, sin levantar nada
+        run: |
+          pytest tests/test_t1_banco.py \
+                 tests/test_t5_fuga.py \
+                 tests/test_guardian_reglas.py \
+                 tests/test_t11_bitacora.py \
+                 -q --cov=guardian --cov-report=term-missing --cov-fail-under=70
+
+      # La cobertura se mide ACOTADA a `guardian`. Un umbral sobre todo el
+      # repositorio se sube escribiendo pruebas de cualquier cosa; lo que hay
+      # que medir es la capa que contiene.
+
+  # -------------------------------------------------------------------
+  # 2 · Que las pruebas saben ponerse en rojo.
+  # -------------------------------------------------------------------
+  sensibilidad:
+    name: las reglas apagadas tumban el build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      # Apaga cinco reglas, una a una, y EXIGE que cada una tumbe la prueba
+      # que le corresponde. Si alguna sigue en verde, este paso falla: esa
+      # regla no estaba protegida y el README no podria decir lo que dice.
+      - name: Apagar reglas a propósito
+        run: python herramientas/sensibilidad.py
+
+      # Y que el mutador devolvio los ficheros como estaban. Una herramienta
+      # que modifica el codigo fuente para medir tiene que dejarlo idéntico:
+      # si no, el trabajo siguiente mediria un repositorio contaminado.
+      - name: El mutador no dejó nada tocado
+        run: git diff --exit-code
+
+  # -------------------------------------------------------------------
+  # 3 · El sistema entero, contra PostgreSQL de verdad.
+  # -------------------------------------------------------------------
+  sistema:
+    name: sistema completo · PostgreSQL real
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      # Claves de usar y tirar, validas solo dentro de este contenedor
+      # efimero. No son secretos: nada de lo que hay en esa base es real.
+      - name: Configuración del entorno
+        run: |
+          cat > .env <<'FIN'
+          POSTGRES_USER=cartera_owner
+          POSTGRES_PASSWORD=ci-owner-efimero
+          POSTGRES_DB=cartera
+          CLAVE_RO=ci-ro-efimero
+          PUERTO_DB=5433
+          DATABASE_URL_OWNER=postgresql://cartera_owner:ci-owner-efimero@localhost:5433/cartera
+          DATABASE_URL_RO=postgresql://consulta_ro:ci-ro-efimero@localhost:5433/cartera
+          FIN
+
+      # Levantar con `docker compose` y no con un `services:` del runner es
+      # deliberado: asi el CI ejecuta EL MISMO arranque que se documenta en el
+      # README. Un CI que levanta la base de otra forma deja sin probar
+      # justo el camino por el que va a pasar quien clone el repositorio.
+      - name: Levantar la base
+        run: docker compose up -d --wait
+
+      # El healthcheck del contenedor usa el socket local, y durante el init
+      # PostgreSQL ya escucha ahi con un servidor temporal. Es decir: puede dar
+      # verde ANTES de que los scripts de datos hayan corrido. Por eso se
+      # espera desde FUERA, por TCP, y ademas se afirma que los datos estan.
+      - name: Esperar a que el init haya terminado de verdad
+        run: |
+          python - <<'FIN'
+          import os, time, psycopg
+          url = "postgresql://cartera_owner:ci-owner-efimero@localhost:5433/cartera"
+          for intento in range(60):
+              try:
+                  with psycopg.connect(url, connect_timeout=3) as c:
+                      n = c.execute("SELECT count(*) FROM cartera.cuotas").fetchone()[0]
+                  assert n > 0, "la base responde pero no tiene datos"
+                  print(f"init terminado: {n} cuotas")
+                  break
+              except Exception as e:
+                  print(f"  intento {intento + 1}: {type(e).__name__}")
+                  time.sleep(2)
+          else:
+              raise SystemExit("la base nunca quedo lista")
+          FIN
+
+      - name: Suite completa
+        run: pytest -q
+
+      # Si algo falla arriba, los registros del contenedor son lo primero que
+      # se mira. `if: failure()` para no ensuciar los verdes.
+      - name: Registros de la base (solo si algo falló)
+        if: failure()
+        run: docker compose logs db
