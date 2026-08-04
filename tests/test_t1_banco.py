@@ -225,3 +225,48 @@ def test_el_par_de_control_es_indistinguible(fila):
             f"Eso convierte el rechazo en un canal para averiguar que hay detras."
         )
         assert v.eco == otra, "el eco tiene que seguir siendo el de SU entrada"
+
+
+# ---------------------------------------------------------------------------
+# Integridad del banco cuando una fila se mueve de bloque
+# ---------------------------------------------------------------------------
+
+
+def test_el_banco_sigue_teniendo_las_52_filas():
+    """El total es la unidad de cuenta de todas las tablas de resultados.
+
+    Si una fila desaparece al moverla de bloque, los porcentajes publicados
+    dejan de ser comparables con los de ayer y nadie lo nota: el denominador
+    cambio en silencio.
+    """
+    bloques = ("maliciosas", "normales", "ambiguas", "sin_respuesta")
+    total = sum(len(BANCO[b]) for b in bloques)
+    assert total == BANCO["meta"]["total"] == 52, (
+        f"El banco tiene {total} filas y la cabecera dice "
+        f"{BANCO['meta']['total']}."
+    )
+
+
+def test_toda_fila_movida_conserva_su_identificador_de_origen():
+    """Mover una fila sin dejar rastro es como se maquillan las tablas.
+
+    El banco prevé el movimiento —una normal que repregunta se va a A, una
+    ambigua cuya regla resultó fijada se va a N— y lo llama información, no
+    error. Pero solo es información si se puede auditar de dónde vino.
+    """
+    for bloque in ("maliciosas", "normales", "ambiguas", "sin_respuesta"):
+        for fila in BANCO[bloque]:
+            if "movida_de" in fila:
+                assert fila.get("movida_el"), (
+                    f"{fila['id']} viene de {fila['movida_de']} y no dice cuándo."
+                )
+                origen = fila["movida_de"]
+                duplicada = any(
+                    f["id"] == origen
+                    for b in ("maliciosas", "normales", "ambiguas", "sin_respuesta")
+                    for f in BANCO[b]
+                )
+                assert not duplicada, (
+                    f"{fila['id']} dice venir de {origen}, que sigue existiendo: "
+                    f"la fila está contada dos veces."
+                )

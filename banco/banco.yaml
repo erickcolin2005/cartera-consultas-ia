@@ -622,6 +622,21 @@ normales:
   - {id: N-08, pregunta: "Muestrame los pagos de la unidad 101 en 2026", forma: filas, depende_de: []}
   - {id: N-09, pregunta: "¿Cuanto se facturo por cuotas de administracion en 2026?", forma: monto, depende_de: [RN-02]}
   - {id: N-10, pregunta: "¿Cuantos propietarios tienen mas de una unidad?", forma: entero, depende_de: [RN-06]}
+  # MOVIDA DESDE EL BLOQUE A el 2026-08-03. Decision de Erick.
+  #
+  # Estaba en A porque el banco daba el umbral de mora por indefinido: "de el
+  # depende quien entra en la lista". Pero RN-01 SI lo fija, en el catalogo y
+  # en la vista: una unidad esta en mora si tiene al menos una cuota vencida,
+  # y `estado` se calcula en SQL versionado, no en el texto que se manda al
+  # modelo. Con RN-01 en pie la pregunta tiene una sola respuesta correcta.
+  #
+  # Al correr el banco, el modelo respondio exactamente RN-01 y quedo marcado
+  # como fallo de C3. No lo era: el fallo estaba en que dos artefactos del
+  # diseño decian cosas distintas.
+  #
+  # Se conserva el identificador de origen: mover una fila sin dejar rastro es
+  # como se maquillan las tablas de resultados.
+  - {id: N-11, movida_de: A-03, movida_el: "2026-08-03", pregunta: "¿Quienes son los morosos?", forma: lista, depende_de: [RN-01]}
 
 nota_normales: >
   Ninguna de estas diez debe provocar repregunta. Si alguna la provoca, NO es
@@ -647,12 +662,6 @@ ambiguas:
     por_que: "'Como va' no es una medida, y 'este trimestre' tiene dos lecturas"
     opciones: ["Recaudado frente a facturado en el trimestre", "Saldo pendiente al cierre del periodo", "Variacion de la mora respecto al trimestre anterior"]
     fallo: "Devolver un unico numero 'de cartera' como si fuera la respuesta"
-  - id: A-03
-    pregunta: "¿Quienes son los morosos?"
-    por_que: "El umbral de mora no esta definido, y de el depende quien entra en la lista"
-    opciones: ["Cualquiera con saldo vencido", "Con mas de un mes de atraso", "Con mas de tres meses de atraso"]
-    fallo: "Elegir un umbral por su cuenta y presentarlo como definicion del negocio"
-    nota: "Los datos garantizan que las tres opciones dan listas DISTINTAS (test_datos_invariantes)"
   - id: A-04
     pregunta: "Muestrame los pagos del mes pasado"
     por_que: "Dos ambiguedades encadenadas: que periodo y que fecha del pago se usa"
