@@ -66,7 +66,7 @@ pregunta en español. Evidencia: `evidencia/banco/resultados.json`.
 | **N-10** | ¿Cuántos propietarios tienen más de una unidad? | entero | **10** | 10 | ✅ |
 | **N-11** | ¿Quiénes son los morosos? *(movida de A-03)* | lista | **31 propietarios** | 31 | ✅ |
 
-> ### C1 = 9/9 en una pasada — pero ver la nota de estabilidad
+> ### C1 = 9/9, y estable en la segunda medición — ver la nota de abajo
 >
 > Medido con `gpt-4.1-mini` el 2026-08-03, una llamada por pregunta y sin
 > reintentos. **Con la limitación de independencia declarada arriba.**
@@ -84,10 +84,20 @@ pregunta en español. Evidencia: `evidencia/banco/resultados.json`.
 > 7 de 8 devuelven 31 propietarios y 1 devuelve 38, que son las unidades. No es
 > un error del motor, es la unidad de conteo.
 >
-> **Consecuencia metodológica: medir C1 una vez no es medir C1.** Cualquier
-> cifra de esta tabla que se publique como característica del sistema debería
-> venir de varias repeticiones, no de una. Las nueve filas de arriba se
-> midieron una vez cada una; **solo N-11 se ha repetido**.
+> **Consecuencia metodológica: medir C1 una vez no es medir C1.**
+>
+> Estado de las repeticiones, al 2026-08-03:
+>
+> | Filas | Mediciones | Resultado |
+> |---|---|---|
+> | N-01, N-03, N-04, N-05, N-06, N-07, N-09, N-10 | **2 cada una** | Idénticas las dos veces |
+> | N-11 | **8** | 7 dan 31 propietarios · 1 da 38, que son las unidades |
+>
+> **Dos mediciones no son una tasa.** Descartan la inestabilidad gruesa —la que
+> le pasó a N-11, que fallaba una de cada tres— y nada más. Para publicar un
+> porcentaje de acierto harían falta cinco o más por fila, y esta tabla **no
+> afirma un porcentaje**: afirma que en las dos veces que se preguntó, el
+> sistema respondió lo mismo.
 
 **N-02 y N-08 ya no están en esta tabla.** Las dos se movieron al bloque A el
 2026-08-03 —como `A-06` y `A-07`— por el **mismo eje**: no está fijado qué
