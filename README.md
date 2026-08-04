@@ -7,15 +7,15 @@ guardián **sin base de datos**, el sistema completo contra PostgreSQL, y uno qu
 **apaga siete reglas a propósito y exige que el build caiga**—. Si está en verde,
 las afirmaciones de este documento se midieron en una máquina que no es la mía.
 
-> ## 7 de 9 incrementos cerrados · **el sistema funciona de punta a punta**
+> ## 8 de 9 incrementos cerrados · **el sistema funciona de punta a punta**
 >
 > Escribes una pregunta en español, un modelo la traduce a SQL, y ese SQL pasa
 > por una comprobación que lo ejecuta, lo rechaza nombrando la regla, o te
 > repregunta. **Los 52 casos del banco están medidos y publicados con los
 > fallos dentro** — [§4.1](#41--los-resultados-con-los-fallos-dentro).
 >
-> **Lo que falta:** I-5 (editar y reejecutar una consulta desde la pantalla) e
-> I-9 (demo pública, opcional). Nada de lo que este documento describe en
+> **Lo que falta:** I-9, la demo pública, declarada como opcional y no
+> bloqueante desde el principio. Nada de lo que este documento describe en
 > presente está sin construir.
 >
 > Este aviso cambia cuando cambia lo que hay, no antes.
@@ -321,6 +321,7 @@ ejecución del CI destapó que las pruebas solo importaban si se lanzaban con
 | **T-11 · la bitácora no se puede falsificar** (caso M-30) | `pytest tests/test_t11_bitacora.py` |
 | **T-7 · el «0» de la pantalla lo confirma PostgreSQL**, no el código que lo muestra | `pytest tests/test_t7_contador.py` |
 | **Apagar siete reglas a propósito tumba el build, cada una en su prueba** | `python herramientas/sensibilidad.py` |
+| **I-5 · editar un `SELECT` aceptado y volverlo `DELETE` lo rechaza igual** | `pytest tests/test_i5_reejecutar.py` |
 | **El build existe**: tres trabajos, uno de ellos sin base de datos | `.github/workflows/pruebas.yml` |
 
 **T-7 merece una línea aparte, porque es la única prueba en la que el número no
@@ -338,11 +339,11 @@ el envoltorio del cursor. En un rechazo no hay ninguna de las tres.
 
 ### ❌ Todavía no existe
 
-**Editar y reejecutar** una consulta desde la pantalla (I-5) y el **traductor de
-errores completo**. Con ellos, tres de las trece pruebas: **T-2** (degradación),
-**T-6** (los cuatro tipos de respuesta) y **T-12** (traductor). **T-10**
-—superficie de salida y CSP— tampoco está escrita, aunque la CSP sí se envía.
-Están nombradas para que su ausencia sea visible en vez de deducible.
+El **traductor de errores completo**. Con él, tres de las trece pruebas:
+**T-2** (degradación), **T-6** (los cuatro tipos de respuesta) y **T-12**
+(traductor). **T-10** —superficie de salida y CSP— tampoco está escrita, aunque
+la CSP sí se envía. Están nombradas para que su ausencia sea visible en vez de
+deducible.
 
 **Lo que este repositorio puede afirmar hoy:**
 
@@ -742,7 +743,7 @@ habría seguido en verde con la regla apagada.
 | **I-2′** | **Guardián completo S0…S7, listas blancas, T-1 y T-5 rompiendo el build** | ✅ **hecho** |
 | **I-3′** | **`WITH`, subconsultas e identificadores entrecomillados, sin perder contención** | ✅ **hecho** |
 | **I-4** | **Repregunta, «no hay datos», el modelo de verdad. T-3 y T-4 midiendo CD1** | ✅ **hecho** |
-| I-5 | Editar y reejecutar la consulta con las mismas comprobaciones | ⏳ |
+| **I-5** | **Editar la consulta en pantalla y reenviarla por la misma puerta** | ✅ **hecho** |
 | **I-6** | **La pantalla: una sola, sin JavaScript, con la consulta ejecutada a la vista** | ✅ **hecho** |
 | — | **Bitácora (T-11) y el build (CI)** · las dos frases que la pantalla afirmaba sin cumplir | ✅ **hecho** |
 | — | **T-7** · el contador, con caso positivo y testigo del lado del servidor | ✅ **hecho** |

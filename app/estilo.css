@@ -72,3 +72,10 @@ table { border-collapse: collapse; font-size: .85rem; width: 100%; }
 th, td { border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas);
          padding: .3rem .5rem; text-align: left; white-space: nowrap; }
 th { background: color-mix(in srgb, CanvasText 10%, Canvas); }
+
+/* I-5 · la caja para editar y reenviar. Sin adornos: es un formulario mas,
+   y que se vea igual que el de arriba es parte del argumento — no hay una
+   entrada privilegiada. */
+.editor { margin: .4rem 0 1rem; }
+.editor label { font-weight: 600; font-size: .9rem; }
+.editor textarea { margin-bottom: .5rem; }

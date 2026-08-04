@@ -186,7 +186,7 @@ alguien <strong>va a intentar romperlo</strong>, y está construido para eso.</p
 </ol>
 <p class="cd">Las reglas viven en código y tienen prueba: si se desactiva una,
 el build cae — y eso también se comprueba, apagando reglas a propósito en cada
-cambio. Hoy: <strong>286 pruebas en verde</strong>.</p>
+cambio. Hoy: <strong>301 pruebas en verde</strong>.</p>
 
 {formulario}
 
@@ -238,10 +238,47 @@ envuelve la conexión y cuenta cada sentencia que sale hacia el motor. Cuando un
 consulta sí se ejecuta, marca 1 — pruébalo con el primer ejemplo. Hay una prueba
 para los dos casos: un contador que devolviera siempre 0 la haría fallar.</p>
 <h3>Consulta detenida — no se ejecutó</h3>
-<pre class="detenida">{e(v.eco)}</pre>
+{caja_para_editar(v.eco, "Corrígela y vuelve a intentarlo: se revisa otra vez, entera",
+                  "Intentar de nuevo")}
+<p class="apoyo">No hay reintento automático tras un rechazo de seguridad, y es
+deliberado: reintentar solo sería una segunda oportunidad para quien ataca. Que
+lo reintentes tú es distinto — cada envío se revisa desde cero.</p>
 <p class="apoyo">Esta regla no está escrita en las instrucciones que se le dan al
 modelo: está en código y tiene prueba. Si alguien la desactiva, el build falla.</p>
 </section>"""
+
+
+def caja_para_editar(sql: str, etiqueta: str, boton: str) -> str:
+    """La consulta, editable, para volver a enviarla. Es I-5.
+
+    LO QUE ESTO DEMUESTRA, Y ES TODO EL PUNTO
+    ------------------------------------------
+    Lo que sale de aquí entra por `/?sql=`, la MISMA puerta que cualquier otra
+    consulta. No hay una vía privilegiada para el texto que el sistema acaba de
+    enseñar. Editar un `SELECT` aceptado y convertirlo en un `DELETE` lo rechaza
+    igual que si se hubiera escrito de cero — y esa es la comprobación que un
+    revisor hace en diez segundos si le das la caja.
+
+    Sin la caja, "pasa por las mismas comprobaciones" es una afirmación. Con la
+    caja, es un botón.
+
+    QUE SQL SE PONE AQUI, Y POR QUE NO EL OTRO
+    -------------------------------------------
+    Va el ORIGINAL, no el reserializado. El reserializado lleva el envoltorio
+    `SELECT * FROM (...) AS _acotado LIMIT 101` que le añade el sistema: si se
+    pusiera ahí, editarlo y reenviarlo lo envolvería una segunda vez, y el
+    usuario estaría corrigiendo un texto que no escribió.
+
+    El ejecutado sigue a la vista, y sigue sin ser editable. Esa asimetría es
+    deliberada: lo que se audita no se toca, y lo que se toca se vuelve a
+    auditar.
+    """
+    return f"""
+<form method="get" action="/" class="editor">
+<label for="editar">{e(etiqueta)}</label>
+<textarea id="editar" name="sql" rows="4">{e(sql)}</textarea>
+<button type="submit">{e(boton)}</button>
+</form>"""
 
 
 def bloque_resultado(v, r) -> str:
@@ -264,8 +301,12 @@ traduce por lista blanca, porque su texto nombra objetos y columnas.</p></sectio
     )
     return f"""
 <section class="ok">
-<h2>1 · Lo que se pidió</h2>
-<pre>{e(v.eco)}</pre>
+<h2>1 · Lo que se pidió <small>(puedes cambiarlo)</small></h2>
+{caja_para_editar(v.eco, "Edítala y vuelve a enviarla: pasa por la misma comprobación",
+                  "Ejecutar de nuevo")}
+<p class="apoyo">Cámbiale un <code>SELECT</code> por un <code>DELETE</code> y
+envíala. Se rechaza igual que si la hubieras escrito de cero: <b>no hay una vía
+rápida para el texto que el sistema acaba de aceptar.</b></p>
 <p class="puente">↓ La comprobación previa la aceptó y le añadió el límite de
 {LIMITE_FILAS} filas. No cambió nada más.</p>
 <h2>2 · Lo que se ejecutó de verdad <small>(no editable)</small></h2>
