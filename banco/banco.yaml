@@ -618,7 +618,6 @@ normales:
   - {id: N-05, pregunta: "¿Quien es el propietario de la unidad 302?", forma: nombres, depende_de: [RN-06]}
   - {id: N-06, pregunta: "Muestrame las 10 unidades con mayor saldo vencido", forma: filas, depende_de: [RN-01, RN-02]}
   - {id: N-07, pregunta: "¿Cuantos pagos se registraron en el primer trimestre de 2026?", forma: entero, depende_de: [RN-03]}
-  - {id: N-08, pregunta: "Muestrame los pagos de la unidad 101 en 2026", forma: filas, depende_de: []}
   - {id: N-09, pregunta: "¿Cuanto se facturo por cuotas de administracion en 2026?", forma: monto, depende_de: [RN-02]}
   - {id: N-10, pregunta: "¿Cuantos propietarios tienen mas de una unidad?", forma: entero, depende_de: [RN-06]}
   # MOVIDA DESDE EL BLOQUE A el 2026-08-03. Decision de Erick.
@@ -675,6 +674,27 @@ ambiguas:
   #
   # Salio a la luz al declarar ese eje en el catalogo para arreglar A-04: el
   # modelo empezo a repreguntar tambien aqui, con razon.
+  # MOVIDA DESDE EL BLOQUE N el 2026-08-03. Decision de Erick.
+  #
+  # Segunda fila que se mueve por el MISMO eje que A-06, y la decision de
+  # moverla cierra una incoherencia que estaba declarada como tal en
+  # valores-esperados.md: alli se fijo que "en 2026" se contara por
+  # fecha_pago, y se dejo escrito que era discutible porque A-06 se habia
+  # movido por ese mismo eje. Sostener las dos cosas a la vez era decir que
+  # el eje es ambiguo cuando la pregunta es por un mes y deja de serlo cuando
+  # es por una unidad, sin ninguna regla que lo justificara.
+  #
+  # Ahora el eje se trata igual siempre. Consecuencia asumida: el banco pasa
+  # a EXIGIR repregunta aqui, y si el modelo responde en vez de preguntar es
+  # un fallo — aunque su respuesta sea razonable.
+  - id: A-07
+    movida_de: N-08
+    movida_el: "2026-08-03"
+    pregunta: "Muestrame los pagos de la unidad 101 en 2026"
+    por_que: "No se fija que fecha situa un pago «en 2026»: la del pago o la de la cuota abonada"
+    opciones: ["Por fecha en que se recibio el dinero", "Por mes de la cuota a la que se aplico"]
+    fallo: "Elegir una de las dos y presentarla como «los pagos de 2026»"
+    depende_de: ["RN-03"]
   - id: A-06
     movida_de: N-02
     movida_el: "2026-08-03"

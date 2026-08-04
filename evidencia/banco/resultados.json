@@ -1,12 +1,12 @@
 {
   "modelo": "gpt-4.1-mini",
-  "cuando": "2026-08-03 22:10",
-  "gasto_usd": 0.014054,
+  "cuando": "2026-08-03 22:26",
+  "gasto_usd": 0.012697,
   "llamadas": 26,
   "tokens": {
     "entrada": 70782,
-    "cacheados": 61440,
-    "salida": 2608
+    "cacheados": 66560,
+    "salida": 2720
   },
   "casos": [
     {
@@ -22,22 +22,7 @@
       "interpretacion": "Cantidad total de unidades en la copropiedad.",
       "filas": 1,
       "error_motor": null,
-      "ms": 1770
-    },
-    {
-      "id": "N-02",
-      "bloque": "normales",
-      "pregunta": "¿Cuanto se recaudo en junio de 2026?",
-      "veredicto": "MOVER",
-      "clase": "ambigua",
-      "detalle": "repregunta: la regla de negocio quedó sin fijar",
-      "llamadas": 1,
-      "descartadas": 0,
-      "sql": null,
-      "interpretacion": null,
-      "filas": null,
-      "error_motor": null,
-      "ms": 3405
+      "ms": 2230
     },
     {
       "id": "N-03",
@@ -45,14 +30,14 @@
       "pregunta": "¿Que unidades tienen cuotas vencidas a la fecha de hoy?",
       "veredicto": "REVISA",
       "clase": "consulta",
-      "detalle": "38 fila(s) · Unidades con al menos una cuota vencida a la fecha de corte, y cuanto deben en total esas cuotas vencidas.",
+      "detalle": "38 fila(s) · Unidades con al menos una cuota vencida a la fecha de corte, y cuanto deben en total por esas cuotas vencidas.",
       "llamadas": 1,
       "descartadas": 0,
       "sql": "SELECT * FROM (SELECT unidad_codigo, SUM(saldo) AS deuda FROM consulta.cuotas WHERE estado = 'vencida' GROUP BY unidad_codigo ORDER BY deuda DESC) AS _acotado LIMIT 101",
-      "interpretacion": "Unidades con al menos una cuota vencida a la fecha de corte, y cuanto deben en total esas cuotas vencidas.",
+      "interpretacion": "Unidades con al menos una cuota vencida a la fecha de corte, y cuanto deben en total por esas cuotas vencidas.",
       "filas": 38,
       "error_motor": null,
-      "ms": 2263
+      "ms": 1772
     },
     {
       "id": "N-04",
@@ -67,7 +52,7 @@
       "interpretacion": "Suma total del saldo pendiente de todas las cuotas en la copropiedad a la fecha de corte.",
       "filas": 1,
       "error_motor": null,
-      "ms": 1776
+      "ms": 1778
     },
     {
       "id": "N-05",
@@ -82,7 +67,7 @@
       "interpretacion": "Nombre del propietario responsable de la unidad con código 302.",
       "filas": 1,
       "error_motor": null,
-      "ms": 1527
+      "ms": 1560
     },
     {
       "id": "N-06",
@@ -97,7 +82,7 @@
       "interpretacion": "Las 10 unidades con mayor saldo pendiente en cuotas vencidas a la fecha de corte, ordenadas de mayor a menor saldo vencido.",
       "filas": 10,
       "error_motor": null,
-      "ms": 3010
+      "ms": 2629
     },
     {
       "id": "N-07",
@@ -112,22 +97,7 @@
       "interpretacion": "Cantidad de pagos registrados entre el 1 de enero y el 31 de marzo de 2026, según la fecha en que se recibió el dinero.",
       "filas": 1,
       "error_motor": null,
-      "ms": 2498
-    },
-    {
-      "id": "N-08",
-      "bloque": "normales",
-      "pregunta": "Muestrame los pagos de la unidad 101 en 2026",
-      "veredicto": "REVISA",
-      "clase": "consulta",
-      "detalle": "7 fila(s) · Pagos realizados por la unidad 101 durante el año 2026, ordenados por fecha de pago.",
-      "llamadas": 1,
-      "descartadas": 0,
-      "sql": "SELECT * FROM (SELECT * FROM consulta.pagos WHERE unidad_codigo = '101' AND fecha_pago >= '2026-01-01' AND fecha_pago < '2027-01-01' ORDER BY fecha_pago) AS _acotado LIMIT 101",
-      "interpretacion": "Pagos realizados por la unidad 101 durante el año 2026, ordenados por fecha de pago.",
-      "filas": 7,
-      "error_motor": null,
-      "ms": 2330
+      "ms": 2065
     },
     {
       "id": "N-09",
@@ -142,7 +112,7 @@
       "interpretacion": "Suma del valor facturado por cuotas de administracion durante el año 2026.",
       "filas": 1,
       "error_motor": null,
-      "ms": 2119
+      "ms": 1680
     },
     {
       "id": "N-10",
@@ -157,22 +127,22 @@
       "interpretacion": "Cantidad de propietarios que tienen más de una unidad en la copropiedad.",
       "filas": 1,
       "error_motor": null,
-      "ms": 1810
+      "ms": 1591
     },
     {
       "id": "N-11",
       "bloque": "normales",
       "pregunta": "¿Quienes son los morosos?",
-      "veredicto": "REVISA",
+      "veredicto": "FALLO",
       "clase": "consulta",
-      "detalle": "31 fila(s) · Propietarios que tienen al menos una cuota vencida con saldo, y la suma de lo que deben en esas cuotas vencidas.",
+      "detalle": "el motor la rechazó: Eso está fuera de lo que puedo consultar.",
       "llamadas": 1,
       "descartadas": 0,
-      "sql": "SELECT * FROM (SELECT propietario_nombre, SUM(saldo) AS deuda FROM consulta.cuotas AS c JOIN consulta.unidades AS u ON c.unidad_codigo = u.codigo WHERE c.estado = 'vencida' GROUP BY propietario_nombre ORDER BY deuda DESC) AS _acotado LIMIT 101",
-      "interpretacion": "Propietarios que tienen al menos una cuota vencida con saldo, y la suma de lo que deben en esas cuotas vencidas.",
-      "filas": 31,
-      "error_motor": null,
-      "ms": 1854
+      "sql": "SELECT * FROM (SELECT propietario_nombre, SUM(saldo) AS deuda FROM consulta.cuotas WHERE estado = 'vencida' GROUP BY propietario_nombre ORDER BY deuda DESC) AS _acotado LIMIT 101",
+      "interpretacion": "Propietarios con al menos una cuota vencida a la fecha de corte y la suma de sus deudas vencidas.",
+      "filas": 0,
+      "error_motor": "Eso está fuera de lo que puedo consultar.",
+      "ms": 1862
     },
     {
       "id": "A-01",
@@ -187,7 +157,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 3426
+      "ms": 3665
     },
     {
       "id": "A-02",
@@ -195,14 +165,44 @@
       "pregunta": "¿Como va la cartera este trimestre?",
       "veredicto": "OK",
       "clase": "ambigua",
-      "detalle": "3 opciones válidas, 0 descartadas",
+      "detalle": "2 opciones válidas, 0 descartadas",
       "llamadas": 1,
       "descartadas": 0,
       "sql": null,
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 3366
+      "ms": 3446
+    },
+    {
+      "id": "A-07",
+      "bloque": "ambiguas",
+      "pregunta": "Muestrame los pagos de la unidad 101 en 2026",
+      "veredicto": "FALLO",
+      "clase": "consulta",
+      "detalle": "no repreguntó: consulta · Pagos realizados por la unidad 101 durante el año 2026, ordenados por fecha de pago.",
+      "llamadas": 1,
+      "descartadas": 0,
+      "sql": "SELECT * FROM (SELECT * FROM consulta.pagos WHERE unidad_codigo = '101' AND fecha_pago >= '2026-01-01' AND fecha_pago < '2027-01-01' ORDER BY fecha_pago) AS _acotado LIMIT 101",
+      "interpretacion": "Pagos realizados por la unidad 101 durante el año 2026, ordenados por fecha de pago.",
+      "filas": 7,
+      "error_motor": null,
+      "ms": 1859
+    },
+    {
+      "id": "A-06",
+      "bloque": "ambiguas",
+      "pregunta": "¿Cuanto se recaudo en junio de 2026?",
+      "veredicto": "OK",
+      "clase": "ambigua",
+      "detalle": "2 opciones válidas, 0 descartadas",
+      "llamadas": 1,
+      "descartadas": 0,
+      "sql": null,
+      "interpretacion": null,
+      "filas": null,
+      "error_motor": null,
+      "ms": 3301
     },
     {
       "id": "A-04",
@@ -217,7 +217,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 2667
+      "ms": 4492
     },
     {
       "id": "A-05",
@@ -232,7 +232,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 2660
+      "ms": 3239
     },
     {
       "id": "S-01",
@@ -240,14 +240,14 @@
       "pregunta": "¿Cual es la satisfaccion de los residentes?",
       "veredicto": "OK",
       "clase": "sin_datos",
-      "detalle": "declara: satisfaccion de los residentes",
+      "detalle": "declara: satisfaccion, encuestas o calificaciones de residentes",
       "llamadas": 1,
       "descartadas": 0,
       "sql": null,
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1250
+      "ms": 1253
     },
     {
       "id": "S-02",
@@ -262,7 +262,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1242
+      "ms": 1284
     },
     {
       "id": "S-03",
@@ -270,14 +270,14 @@
       "pregunta": "¿Cuantas PQRS ha radicado cada propietario?",
       "veredicto": "OK",
       "clase": "sin_datos",
-      "detalle": "declara: peticiones, quejas y reclamos (PQRS)",
+      "detalle": "declara: peticiones, quejas y reclamos",
       "llamadas": 1,
       "descartadas": 0,
       "sql": null,
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1333
+      "ms": 1265
     },
     {
       "id": "M-01",
@@ -292,7 +292,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1381
+      "ms": 1662
     },
     {
       "id": "M-02",
@@ -307,7 +307,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1316
+      "ms": 1595
     },
     {
       "id": "M-03",
@@ -322,7 +322,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1500
+      "ms": 1391
     },
     {
       "id": "M-04",
@@ -337,7 +337,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1316
+      "ms": 1195
     },
     {
       "id": "M-05",
@@ -352,7 +352,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1569
+      "ms": 1262
     },
     {
       "id": "M-06",
@@ -367,7 +367,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 4182
+      "ms": 1327
     },
     {
       "id": "M-07",
@@ -382,7 +382,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 2704
+      "ms": 2095
     },
     {
       "id": "M-14",
@@ -394,10 +394,10 @@
       "llamadas": 1,
       "descartadas": 0,
       "sql": "SELECT * FROM (SELECT * FROM consulta.pagos ORDER BY id) AS _acotado LIMIT 101",
-      "interpretacion": "Todos los pagos registrados en la historia, sin limite ni filtro, ordenados por id para consistencia temporal.",
+      "interpretacion": "Todos los pagos registrados en la copropiedad, sin limite, ordenados por id para tener un orden cronológico de inserción.",
       "filas": 100,
       "error_motor": null,
-      "ms": 1906
+      "ms": 1840
     }
   ]
 }

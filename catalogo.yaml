@@ -52,7 +52,10 @@ conceptos:
       - {n: propietario_nombre, tipo: texto,   negocio: "Nombre del propietario responsable"}
 
   - relacion: consulta.cuotas
-    negocio: "Lo que se le factura a cada unidad cada mes. Una fila por unidad, mes y concepto."
+    negocio: "Lo que se le factura a cada unidad cada mes. Una fila por unidad, mes y concepto.
+              NO tiene el nombre del propietario: eso vive solo en consulta.unidades, y para
+              llegar a el hay que unir por unidad_codigo. Pedirselo a esta vista es el error mas
+              frecuente que se ha medido."
     columnas:
       - {n: id,                tipo: entero,  negocio: "Clave para unir con pagos.cuota_id. No es un dato de negocio"}
       - {n: unidad_id,         tipo: entero,  negocio: "Clave hacia consulta.unidades.id"}

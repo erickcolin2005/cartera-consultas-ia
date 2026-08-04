@@ -1,4 +1,4 @@
-# Valores esperados de N-01 … N-11 (D17)
+# Valores esperados de los nueve casos normales (D17)
 
 **Estado: RELLENADO el 2026-08-03** (estuvo en blanco a propósito hasta
 entonces; el porqué se conserva abajo). · Datos a los que aplica:
@@ -32,7 +32,7 @@ Eso importa más de lo que parece. El sistema evaluado consulta las vistas, y
 son las vistas las que calculan `saldo`, `estado` y `dias_vencida`. **Si la
 lógica de una vista estuviera mal, comparar vista contra vista no lo vería
 nunca.** Comparando tabla base contra vista, esta tabla mide también las
-vistas — y las diez coinciden, lo que es evidencia de que el SQL de
+vistas — y las nueve coinciden, lo que es evidencia de que el SQL de
 `01-esquema.sql` implementa lo que RN-01 dice.
 
 ### Lo que NO es independiente
@@ -62,41 +62,62 @@ pregunta en español. Evidencia: `evidencia/banco/resultados.json`.
 | **N-05** | ¿Quién es el propietario de la unidad 302? | texto | **Beatriz Salazar** | Beatriz Salazar | ✅ |
 | **N-06** | Muéstrame las 10 unidades con mayor saldo vencido | lista | **308, 503, 404, 407, 608, 609, 203, 403, L-01, 606** | idéntica, mismo orden | ✅ |
 | **N-07** | ¿Cuántos pagos se registraron en el primer trimestre de 2026? | entero | **153** | 153 | ✅ |
-| **N-08** | Muéstrame los pagos de la unidad 101 en 2026 | lista | **7 pagos** | 7 | ✅ |
 | **N-09** | ¿Cuánto se facturó por cuotas de administración en 2026? | monto | **318 498 600,00** | 318498600.00 | ✅ |
 | **N-10** | ¿Cuántos propietarios tienen más de una unidad? | entero | **10** | 10 | ✅ |
 | **N-11** | ¿Quiénes son los morosos? *(movida de A-03)* | lista | **31 propietarios** | 31 | ✅ |
 
-> ### C1 = 10/10
+> ### C1 = 9/9 en una pasada — pero ver la nota de estabilidad
 >
 > Medido con `gpt-4.1-mini` el 2026-08-03, una llamada por pregunta y sin
 > reintentos. **Con la limitación de independencia declarada arriba.**
 
-**N-02 ya no está en esta tabla.** Se movió al bloque A el 2026-08-03 (como
-`A-06`) porque "lo recaudado en un mes" no tiene una sola lectura: puede
-contarse por la fecha en que entró el dinero o por el mes de la cuota abonada.
-Una fila sin regla fijada no puede tener valor esperado — tener uno sería
-elegir la lectura en silencio.
+> ### Nota de estabilidad — LA MÁS IMPORTANTE DE ESTE DOCUMENTO
+>
+> **Ese 9/9 es una foto de una pasada, no una propiedad del sistema.** Al
+> repetir N-11 ocho veces con `temperature = 0`, el resultado NO fue idéntico:
+> el modelo pedía `propietario_nombre` a `consulta.cuotas`, donde esa columna
+> no existe, y el motor la rechazaba. Falló 1 de cada 3 aproximadamente.
+>
+> Se corrigió añadiendo al catálogo el hecho que faltaba —que el nombre del
+> propietario vive solo en `consulta.unidades`— y la alucinación desapareció:
+> **cero errores de motor en ocho repeticiones**. Queda una varianza distinta:
+> 7 de 8 devuelven 31 propietarios y 1 devuelve 38, que son las unidades. No es
+> un error del motor, es la unidad de conteo.
+>
+> **Consecuencia metodológica: medir C1 una vez no es medir C1.** Cualquier
+> cifra de esta tabla que se publique como característica del sistema debería
+> venir de varias repeticiones, no de una. Las nueve filas de arriba se
+> midieron una vez cada una; **solo N-11 se ha repetido**.
+
+**N-02 y N-08 ya no están en esta tabla.** Las dos se movieron al bloque A el
+2026-08-03 —como `A-06` y `A-07`— por el **mismo eje**: no está fijado qué
+fecha sitúa un pago en un periodo. Una fila sin regla fijada no puede tener
+valor esperado; tener uno sería elegir la lectura en silencio.
+
+**N-08 estuvo en esta tabla unas horas, y conviene decir por qué salió.** Se le
+fijó `fecha_pago` y se dejó escrito que era discutible, precisamente porque
+N-02 se había movido por ese mismo eje. Sostener las dos cosas a la vez era
+afirmar que el eje es ambiguo cuando la pregunta es por un mes y deja de serlo
+cuando es por una unidad, sin ninguna regla que lo justificara. **La
+incoherencia estaba declarada, y declararla no la arregla.**
 
 ---
 
 ## Interpretaciones que hubo que fijar
 
-Tres de las diez admiten más de una lectura razonable. **No se eligió en
-silencio**: se declara cuál se usó, para que corregirlo sea cambiar una línea.
+Dos de las nueve admiten más de una lectura. **No se eligió en silencio**: se
+declara cuál se usó, para que corregirlo sea cambiar una línea.
 
 | # | Decisión | Alternativa descartada |
 |---|---|---|
 | **N-03** | Cuenta **unidades**, no cuotas. Una unidad con tres cuotas vencidas cuenta una vez | Contar cuotas daría un número mayor y respondería otra pregunta |
-| **N-08** | "En 2026" se cuenta por **`fecha_pago`**: cuándo entró el dinero | Por `periodo_cuota` daría otra cifra |
 | **N-11** | Cuenta **propietarios**, no unidades: la pregunta dice "quiénes" | Por unidades daría 38 en vez de 31 |
 
-**N-08 merece un párrafo más.** El eje `fecha_pago` / `periodo_cuota` es
-exactamente el que volvió ambigua a N-02 y la mandó al bloque A. Que aquí se
-fije y allí no es una decisión de grado —"los pagos de la unidad 101" apunta al
-hecho del pago; "cuánto se recaudó en junio" apunta al periodo— y **es
-discutible**. Si Erick decide que también es ambigua, N-08 se mueve a A con el
-mismo mecanismo, y esta fila desaparece de la tabla.
+**Las dos que quedan son de recuento, no de fecha.** Eligen la unidad de
+conteo —unidades frente a cuotas, propietarios frente a unidades— y esa
+elección la fija la propia pregunta: "qué unidades" y "quiénes". No es el caso
+del eje de fechas, donde ninguna formulación desempata: por eso aquél mandó dos
+filas al bloque A y éste no.
 
 ---
 
@@ -129,13 +150,6 @@ GROUP BY u.codigo ORDER BY d DESC, u.codigo LIMIT 10;
 -- N-07
 SELECT COUNT(*) FROM cartera.pagos
 WHERE fecha_pago >= DATE '2026-01-01' AND fecha_pago < DATE '2026-04-01';
-
--- N-08
-SELECT COUNT(*) FROM cartera.pagos p
-JOIN cartera.cuotas c ON c.id = p.cuota_id
-JOIN cartera.unidades u ON u.id = c.unidad_id
-WHERE u.codigo = '101'
-  AND p.fecha_pago >= DATE '2026-01-01' AND p.fecha_pago < DATE '2027-01-01';
 
 -- N-09
 SELECT SUM(valor) FROM cartera.cuotas
