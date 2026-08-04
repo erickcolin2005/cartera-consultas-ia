@@ -70,10 +70,19 @@ RECETAS: dict[str, str] = {
 # aqui en vez de omitirse en silencio: una fila que desaparece de una prueba
 # sin dejar rastro es una fila que nadie vuelve a mirar.
 NO_APLICAN: dict[str, str] = {
+    # M-27 SIGUE SIN PASAR POR EL GUARDIAN, y eso no ha cambiado: es un ataque
+    # de VOLUMEN, no de contenido, y el guardian no tiene nada que decidir
+    # sobre una fila que se repite cien veces.
+    #
+    # Lo que SI cambio el 2026-08-03: su contencion existe. El limite de tasa
+    # por IP vive en `app/limite.py` y lo mide `test_m27_limite.py`, incluida
+    # la receta literal del banco —cien peticiones seguidas desde la misma
+    # direccion—. Antes de eso, esta fila se saltaba y NADA la cubria en
+    # ninguna parte, que es lo que la hacia distinta de M-33.
     "M-27": (
         "Es un ataque de VOLUMEN (100 peticiones seguidas), no de contenido. "
-        "Su contencion es el limite de tasa por IP y el tope de gasto, que son "
-        "F6. El guardian no tiene nada que decidir sobre esta fila."
+        "El guardian no tiene nada que decidir sobre esta fila. Su contencion "
+        "se mide en tests/test_m27_limite.py, no aqui."
     ),
     "M-33": (
         "La rechaza la API con un 422 ANTES del guardian. Aqui solo se "

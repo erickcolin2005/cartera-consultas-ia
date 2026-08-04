@@ -40,6 +40,7 @@ from guardian.contrato import LIMITE_FILAS  # noqa: E402
 from app import bitacora  # noqa: E402
 from app.ejecutor import ejecutar  # noqa: E402
 from guardian.nucleo import veredicto  # noqa: E402
+from app.limite import Limite, ip_del_cliente, MENSAJE as MENSAJE_LIMITE  # noqa: E402
 from ia import contexto as ctx  # noqa: E402
 from ia.orquestador import responder  # noqa: E402
 
@@ -97,6 +98,20 @@ def _adaptador():
 
 
 ADAPTADOR = _adaptador()
+
+# M-27 · el mecanismo entre un desconocido y la factura.
+#
+# El banco lo pedia asi: "fallo si no existe NINGUN mecanismo entre el atacante
+# y la factura salvo D13". D13 es el tope duro en la consola del proveedor, la
+# red final; depender solo de ella significa que la primera señal de un ataque
+# es que la demo dejo de funcionar porque se acabo el dinero.
+#
+# HAY_PROXY se declara por entorno y NO se adivina: leer X-Forwarded-For sin
+# proxy delante le regala al atacante la forma de saltarse el limite escribiendo
+# una cabecera.
+HAY_PROXY = os.environ.get("HAY_PROXY", "").lower() in ("1", "true", "si")
+LIMITE_PREGUNTAS = Limite(tope=int(os.environ.get("TOPE_PREGUNTAS_MINUTO", "10")))
+LIMITE_SQL = Limite(tope=int(os.environ.get("TOPE_SQL_MINUTO", "60")))
 
 # Los ejemplos llevan su desenlace en la etiqueta A PROPOSITO: asi los tres
 # comportamientos diferenciadores quedan LEIDOS sin pulsar nada, que es como un
@@ -186,7 +201,7 @@ alguien <strong>va a intentar romperlo</strong>, y está construido para eso.</p
 </ol>
 <p class="cd">Las reglas viven en código y tienen prueba: si se desactiva una,
 el build cae — y eso también se comprueba, apagando reglas a propósito en cada
-cambio. Hoy: <strong>301 pruebas en verde</strong>.</p>
+cambio. Hoy: <strong>311 pruebas en verde</strong>.</p>
 
 {formulario}
 
@@ -428,6 +443,18 @@ exactamente por qué: es la que se ejecutó, sin retoques.</p>
 </section>"""
 
 
+def bloque_demasiado_rapido() -> str:
+    """El limite de tasa, explicado sin esconder por que existe."""
+    return f"""
+<section class="largo">
+<h2>Demasiadas preguntas seguidas</h2>
+<p class="msg">{e(MENSAJE_LIMITE)}</p>
+<p class="apoyo">No es un castigo: es el único mecanismo que hay entre alguien
+con prisa y la factura del proveedor. El caso <b>M-27</b> del banco —cien
+preguntas seguidas desde la misma dirección— existe para que este límite tenga
+que estar, y hay pruebas que lo miden.</p></section>"""
+
+
 class Manejador(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         ruta = urlparse(self.path)
@@ -440,11 +467,17 @@ class Manejador(BaseHTTPRequestHandler):
             return self._envia(pagina("<h1>No existe.</h1>"), "text/html", 404)
 
         parametros = parse_qs(ruta.query)
+        ip = ip_del_cliente(self.client_address[0], self.headers, HAY_PROXY)
+
         pregunta = (parametros.get("pregunta") or [""])[0]
         if pregunta.strip():
+            if not LIMITE_PREGUNTAS.admite(ip):
+                return self._demasiado_rapido()
             return self._responde_pregunta(pregunta)
 
         sql = (parametros.get("sql") or [""])[0]
+        if sql.strip() and not LIMITE_SQL.admite(ip):
+            return self._demasiado_rapido()
         if not sql.strip():
             return self._envia(pagina(cabecera()), "text/html")
 
@@ -467,6 +500,11 @@ class Manejador(BaseHTTPRequestHandler):
         else:
             cuerpo = bloque_rechazo(v, r, registrado)
         return self._envia(pagina(cuerpo + cabecera()), "text/html")
+
+    def _demasiado_rapido(self):
+        return self._envia(
+            pagina(bloque_demasiado_rapido() + cabecera()), "text/html", 429
+        )
 
     def _responde_pregunta(self, pregunta: str):
         """La vía en lenguaje natural. Termina SIEMPRE en uno de cinco sitios."""

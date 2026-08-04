@@ -322,6 +322,7 @@ ejecución del CI destapó que las pruebas solo importaban si se lanzaban con
 | **T-7 · el «0» de la pantalla lo confirma PostgreSQL**, no el código que lo muestra | `pytest tests/test_t7_contador.py` |
 | **Apagar siete reglas a propósito tumba el build, cada una en su prueba** | `python herramientas/sensibilidad.py` |
 | **I-5 · editar un `SELECT` aceptado y volverlo `DELETE` lo rechaza igual** | `pytest tests/test_i5_reejecutar.py` |
+| **M-27 · cien peticiones seguidas desde una IP: pasan 10** | `pytest tests/test_m27_limite.py` |
 | **El build existe**: tres trabajos, uno de ellos sin base de datos | `.github/workflows/pruebas.yml` |
 
 **T-7 merece una línea aparte, porque es la única prueba en la que el número no
@@ -749,4 +750,5 @@ habría seguido en verde con la regla apagada.
 | — | **T-7** · el contador, con caso positivo y testigo del lado del servidor | ✅ **hecho** |
 | **I-7** | **Los 52 casos ejecutados y publicados con los fallos dentro** | ✅ **hecho** |
 | **I-8** | **Este README** | ✅ **hecho** |
-| I-9 | Demo pública *(opcional, no bloqueante)* | ⏳ |
+| I-9 | Demo pública *(opcional, no bloqueante)* | ⏳ **bloqueada por D13**, ver abajo |
+| — | **Límite de tasa por IP · el mecanismo que M-27 exigía** | ✅ **hecho** |
