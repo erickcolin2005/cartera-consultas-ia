@@ -7,16 +7,23 @@ guardián **sin base de datos**, el sistema completo contra PostgreSQL, y uno qu
 **apaga siete reglas a propósito y exige que el build caiga**—. Si está en verde,
 las afirmaciones de este documento se midieron en una máquina que no es la mía.
 
-> ## 8 de 9 incrementos cerrados · **el sistema funciona de punta a punta**
+> ## Los 9 incrementos cerrados · **[pruébalo aquí](https://cartera-consultas-ia.onrender.com)**
+>
+> **La demo tarda ~50 s en la primera visita.** El alojamiento gratuito duerme
+> el servicio sin tráfico; no está rota, está despertando.
+>
+> Y corre con **una capa menos que este repositorio**: esa base no da
+> superusuario, así que **8 de 324 rutinas del motor no se pudieron revocar**
+> (316 sí). La propia demo lo dice en su portada, con el número leído de su
+> base, no de una constante. La comprobación previa —el guardián— es idéntica:
+> es código, y se mide sin base de datos.
 >
 > Escribes una pregunta en español, un modelo la traduce a SQL, y ese SQL pasa
 > por una comprobación que lo ejecuta, lo rechaza nombrando la regla, o te
 > repregunta. **Los 52 casos del banco están medidos y publicados con los
 > fallos dentro** — [§4.1](#41--los-resultados-con-los-fallos-dentro).
 >
-> **Lo que falta:** I-9, la demo pública, declarada como opcional y no
-> bloqueante desde el principio. Nada de lo que este documento describe en
-> presente está sin construir.
+> **Nada de lo que este documento describe en presente está sin construir.**
 >
 > Este aviso cambia cuando cambia lo que hay, no antes.
 
@@ -750,5 +757,5 @@ habría seguido en verde con la regla apagada.
 | — | **T-7** · el contador, con caso positivo y testigo del lado del servidor | ✅ **hecho** |
 | **I-7** | **Los 52 casos ejecutados y publicados con los fallos dentro** | ✅ **hecho** |
 | **I-8** | **Este README** | ✅ **hecho** |
-| I-9 | Demo pública *(opcional, no bloqueante)* | ⏳ **bloqueada por D13**, ver abajo |
+| **I-9** | **[Demo pública](https://cartera-consultas-ia.onrender.com)**, declarando con cuántas capas corre | ✅ **hecho** |
 | — | **Límite de tasa por IP · el mecanismo que M-27 exigía** | ✅ **hecho** |
