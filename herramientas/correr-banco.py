@@ -92,7 +92,16 @@ def _juzgar(bloque: str, caso: dict, d, filas: int | None, error: str | None):
     if bloque == "ambiguas":
         if d.clase == "ambigua":
             return "OK", f"{len(d.opciones)} opciones válidas, {d.descartadas} descartadas"
-        return "FALLO", f"no repreguntó: {d.clase} · {d.interpretacion or d.falta or d.mensaje or ''}"
+        # El error del motor se dice AQUI TAMBIEN, no solo en los normales.
+        # A-03 registro `filas=0` sin decir que el motor la habia rechazado
+        # por una columna alucinada, y un cero sin causa se lee como "no hay
+        # morosos". Es la misma trampa que el propio proyecto persigue,
+        # cometida en el instrumento que mide.
+        causa = f" · el motor la rechazó ({error})" if error else ""
+        return "FALLO", (
+            f"no repreguntó: {d.clase} · "
+            f"{d.interpretacion or d.falta or d.mensaje or ''}{causa}"
+        )
 
     if bloque == "sin_respuesta":
         if d.clase == "sin_datos":
@@ -139,7 +148,10 @@ def main() -> int:
         d = responder(pregunta, CONTEXTO, CATALOGO, adaptador)
 
         n_filas = error = None
-        if d.clase == "consulta":
+        if d.veredicto is not None and d.veredicto.permitido:
+            # Se ejecuta siempre que el guardián lo permita, sea cual sea el
+            # bloque: sin esto, un SQL que el motor rechaza queda registrado
+            # como "0 filas" y parece una respuesta vacía en vez de un error.
             r = ejecutar(d.veredicto)
             n_filas, error = len(r.filas), r.error
 
@@ -152,7 +164,7 @@ def main() -> int:
                 "veredicto": veredicto, "clase": d.clase, "detalle": detalle,
                 "llamadas": d.llamadas, "descartadas": d.descartadas,
                 "sql": d.veredicto.sql_a_ejecutar if d.veredicto else None,
-                "interpretacion": d.interpretacion, "filas": n_filas, "ms": ms,
+                "interpretacion": d.interpretacion, "filas": n_filas, "error_motor": error, "ms": ms,
             }
         )
 

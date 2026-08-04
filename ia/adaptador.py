@@ -49,7 +49,18 @@ URL = "https://api.openai.com/v1/chat/completions"
 
 # Fijado a proposito. E-3 del diseño: si el modelo cambia bajo los pies, C1
 # deja de ser reproducible y la tabla de resultados deja de significar nada.
-MODELO = "gpt-4o-mini"
+#
+# Se cambio de `gpt-4o-mini` a `gpt-4.1-mini` el 2026-08-03, y el motivo esta
+# medido, no supuesto: con el primero, N-06 devolvia las 10 CUOTAS mas grandes
+# en vez de las 10 unidades —la misma unidad seis veces— y N-10 devolvia diez
+# filas con un uno en vez de una fila con diez. Se le dieron instrucciones
+# explicitas de grano y de forma y las ignoro; peor aun, cambio la
+# interpretacion para decir que agrupaba y dejo el SQL igual.
+#
+# Cuesta 2.7 veces mas por token de entrada. Sigue siendo despreciable en
+# terminos absolutos, y la alternativa era publicar una respuesta que afirma
+# una cosa y calcula otra.
+MODELO = "gpt-4.1-mini"
 
 # Un SELECT no necesita miles. Fijarlo es gratis y evita una salida desbocada.
 # Las repreguntas son lo que marca el suelo: llevan hasta cuatro SQL.
@@ -69,6 +80,15 @@ SEGUNDOS_DE_ESPERA = 30
 # numero que envejece en silencio.
 PRECIOS: dict[str, dict[str, float]] = {
     # Verificados por Erick contra la pagina de precios de OpenAI, 2026-08-03.
+    "gpt-4.1-mini": {
+        "entrada": 0.40 / 1_000_000,
+        "cacheada": 0.10 / 1_000_000,
+        "salida": 1.60 / 1_000_000,
+        "verificado": "2026-08-03",
+    },
+    # Se queda aunque ya no sea el predeterminado: la tabla de resultados del
+    # 2026-08-03 se midio con el, y sin su precio esa evidencia no se podria
+    # volver a leer en dinero.
     "gpt-4o-mini": {
         "entrada": 0.15 / 1_000_000,
         "cacheada": 0.075 / 1_000_000,

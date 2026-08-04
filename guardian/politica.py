@@ -117,6 +117,35 @@ TIPOS_PERMITIDOS: frozenset[type[exp.Expression]] = frozenset({
     exp.Is, exp.In, exp.Like, exp.ILike, exp.Between, exp.Not, exp.Paren,
     # aritmetica
     exp.Add, exp.Sub, exp.Mul, exp.Div, exp.Mod, exp.Neg,
+    # AMPLIACION 2026-08-03 — `interval '1 month'`.
+    #
+    # POR QUE SE AMPLIA: sin este nodo, "los pagos del mes pasado" y "los
+    # ultimos 30 dias" son INEXPRESABLES. No es un caso raro en cartera: es la
+    # forma normal de preguntar por un periodo relativo. Se descubrio al correr
+    # el banco (A-04): el modelo repreguntaba bien y el guardian tumbaba sus
+    # dos opciones por S5, asi que la repregunta moria y el usuario recibia
+    # "no consigo desambiguar" ante una pregunta perfectamente respondible.
+    #
+    # REVISION DE SEGURIDAD (R-16 exige que sea explicita y en el mismo commit):
+    #
+    #   1. Que contiene. Un `Interval` tiene exactamente dos hijos: un
+    #      `Literal` y un `Var` con la unidad. Los DOS ya estaban permitidos y
+    #      los dos siguen pasando por S5 con sus modificadores.
+    #   2. No es una funcion. No hay `EXECUTE` que revocar ni sobrecarga que
+    #      enumerar: es un constructor de valor del propio analizador.
+    #   3. No amplia el alcance. No puede nombrar una relacion, una columna ni
+    #      una funcion, asi que S3, S4 y S7 siguen viendo exactamente lo mismo.
+    #      Una consulta con `interval` que toque una tabla fuera de la lista se
+    #      rechaza igual, y hay prueba.
+    #   4. Coste. `interval '100000 years'` desborda y el motor devuelve error
+    #      —traducido por lista blanca—, y `statement_timeout` sigue en pie. No
+    #      abre un vector de agotamiento que no existiera ya.
+    #   5. Lo que NO se amplia, a proposito: `interval` NO entra en
+    #      `tipos_permitidos`, asi que `'1 month'::interval` se sigue
+    #      rechazando por S7a. Se admite la forma literal, no la conversion.
+    #      La asimetria es deliberada: S7a es el unico control sin ninguna capa
+    #      debajo y no se toca por comodidad.
+    exp.Interval,
 })
 
 # Estos SI son subclases de `exp.Func` en sqlglot, pero NO son llamadas a

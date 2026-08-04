@@ -510,3 +510,61 @@ def test_i3_la_recursion_sigue_prohibida():
         CATALOGO,
     )
     assert not v.permitido and v.regla == "S5"
+
+
+# ---------------------------------------------------------------------------
+# Ampliacion del 2026-08-03 · `interval`
+# ---------------------------------------------------------------------------
+#
+# La regla de proceso del catalogo (R-16) exige prueba en el mismo commit que
+# la ampliacion. Estas son. Y no comprueban solo que lo legitimo pase: la
+# mitad que importa es que la ampliacion NO abriera otra cosa.
+
+
+def test_interval_permite_expresar_un_periodo_relativo():
+    """Sin esto, "los pagos del mes pasado" es inexpresable."""
+    for sql in [
+        "SELECT * FROM pagos WHERE fecha_pago >= consulta.fecha_corte() - interval '30 days'",
+        "SELECT * FROM pagos WHERE date_trunc('month', fecha_pago) = "
+        "date_trunc('month', consulta.fecha_corte() - interval '1 month')",
+        "SELECT unidad_codigo FROM cuotas WHERE fecha_vencimiento < "
+        "consulta.fecha_corte() - interval '3 months'",
+    ]:
+        v = veredicto(sql, CATALOGO)
+        assert v.permitido, f"rechazado por {v.regla}: {sql}"
+
+
+def test_interval_NO_abre_la_puerta_a_una_tabla_fuera_de_alcance():
+    """La mitad que importa de una ampliación: que no amplíe otra cosa."""
+    v = veredicto(
+        "SELECT * FROM nomina_empleados WHERE alta >= consulta.fecha_corte() - interval '1 year'",
+        CATALOGO,
+    )
+    assert not v.permitido and v.regla == "S3"
+
+
+def test_interval_NO_abre_la_puerta_a_una_funcion_prohibida():
+    v = veredicto(
+        "SELECT pg_sleep(30) FROM cuotas WHERE periodo > consulta.fecha_corte() - interval '1 day'",
+        CATALOGO,
+    )
+    assert not v.permitido and v.regla == "S4"
+
+
+def test_interval_NO_abre_la_puerta_a_una_escritura_anidada():
+    v = veredicto(
+        "WITH x AS (DELETE FROM pagos WHERE fecha_pago < consulta.fecha_corte() "
+        "- interval '1 year' RETURNING *) SELECT * FROM x",
+        CATALOGO,
+    )
+    assert not v.permitido and v.regla == "S2"
+
+
+def test_la_CONVERSION_a_interval_se_sigue_rechazando():
+    """Se admitió la forma literal, no la conversión. S7a es el único control
+    sin ninguna capa debajo y no se afloja por comodidad."""
+    v = veredicto(
+        "SELECT * FROM pagos WHERE fecha_pago >= consulta.fecha_corte() - '30 days'::interval",
+        CATALOGO,
+    )
+    assert not v.permitido and v.regla == "S7"
