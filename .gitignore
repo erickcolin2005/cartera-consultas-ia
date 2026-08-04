@@ -21,3 +21,4 @@ htmlcov/
 .vscode/
 Thumbs.db
 desktop.ini
+despliegue/estado.json

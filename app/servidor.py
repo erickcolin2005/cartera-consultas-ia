@@ -99,6 +99,31 @@ def _adaptador():
 
 ADAPTADOR = _adaptador()
 
+
+def _estado_despliegue() -> dict:
+    """Con cuantas capas esta corriendo ESTE despliegue.
+
+    Lo escribe `despliegue/preparar.py` al arrancar, leyendo lo que el motor
+    dijo. No es una constante ni una suposicion: si en esta base no se pudieron
+    aplicar todas las revocaciones, aqui esta el numero exacto.
+
+    Si el fichero no existe —arranque en local sin pasar por el preparador— se
+    devuelve vacio y la pantalla no declara nada. Declarar "0 sin privilegio"
+    sin haberlo medido seria peor que callar.
+    """
+    import json
+
+    fichero = Path(
+        os.environ.get("ESTADO_DESPLIEGUE", RAIZ / "despliegue" / "estado.json")
+    )
+    try:
+        return json.loads(fichero.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+ESTADO = _estado_despliegue()
+
 # M-27 · el mecanismo entre un desconocido y la factura.
 #
 # El banco lo pedia asi: "fallo si no existe NINGUN mecanismo entre el atacante
@@ -156,6 +181,32 @@ def pagina(cuerpo: str) -> bytes:
 <body><main>{cuerpo}</main></body></html>""".encode()
 
 
+def aviso_de_capas() -> str:
+    """Si a esta base le faltan revocaciones, se dice EN LA PANTALLA.
+
+    No en el README, donde nadie que llegue a la demo va a mirar: aqui, encima
+    del formulario. Un despliegue con una capa menos que la que el repositorio
+    mide es una diferencia que quien prueba tiene derecho a saber ANTES de
+    sacar conclusiones sobre lo que ve.
+    """
+    faltan = ESTADO.get("revocaciones_sin_privilegio", 0)
+    if not faltan:
+        return ""
+    aplicadas = ESTADO.get("revocaciones_aplicadas", 0)
+    esperadas = ESTADO.get("esperadas", 0)
+    return f"""<section class="cd">
+<h2>Esta demo corre con una capa menos que el repositorio</h2>
+<p>La base de este alojamiento no da superusuario, así que <strong>{faltan} de
+{esperadas} rutinas del motor no se pudieron revocar</strong> ({aplicadas} sí).
+En una máquina propia se revocan las {esperadas}.</p>
+<p><strong>La comprobación previa es idéntica</strong> —es código, y se mide sin
+base de datos—, así que lo que rechaza aquí lo rechaza igual. Lo que falta es el
+<em>respaldo del motor</em> para esas {faltan}: si alguien atravesara la
+comprobación, aquí no habría una segunda barrera para ellas.</p>
+<p>Se dice porque es la diferencia entre lo que estás probando y lo que el
+repositorio afirma haber medido.</p></section>"""
+
+
 def formulario_pregunta() -> str:
     """El campo en español. Si no hay proveedor, se dice — no se esconde.
 
@@ -190,6 +241,7 @@ def cabecera() -> str:
     no = "".join(f"<li>{e(x)}</li>" for x in ALCANCE_NO)
     formulario = formulario_pregunta()
     return f"""
+{aviso_de_capas()}
 <h1>Consultas sobre datos de cartera, con contención verificable</h1>
 <p class="sub">Un modelo de lenguaje escribe consultas sobre una base de datos de
 cobranza. Este sistema asume que el modelo <strong>se va a equivocar</strong> y que

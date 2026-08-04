@@ -42,7 +42,9 @@ revocaciones a medias seria el peor de los desenlaces — todo parece funcionar.
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -50,6 +52,14 @@ RAIZ = Path(__file__).resolve().parent.parent
 DATOS = RAIZ / "datos"
 
 # El orden importa y es el mismo que el del entrypoint local.
+# Donde queda escrito lo que el arranque descubrio. Lo lee la pantalla para
+# declarar, en la propia demo, con cuantas capas esta corriendo.
+#
+# Se escribe en cada arranque y NO se versiona: es un hecho de ESTE despliegue,
+# no del repositorio. Un fichero versionado diria lo que paso en la maquina de
+# quien lo commiteo, que es justo la confusion que hay que evitar.
+ESTADO = Path(os.environ.get("ESTADO_DESPLIEGUE", RAIZ / "despliegue" / "estado.json"))
+
 GUION = [
     "01-esquema.sql",
     "02-permisos.sql",
@@ -75,6 +85,40 @@ def _url_owner() -> str:
     return url
 
 
+# Cuantas rutinas revoca el esquema cuando SI hay superusuario. Es el numero
+# que mide `linea-base-revocaciones.json` en local; aqui sirve para deducir
+# cuantas faltan cuando el arranque no vuelve a emitir el aviso.
+ESPERADAS = 324
+
+
+def _sin_privilegio(avisos: list[str]) -> int:
+    """Lee el contador del aviso que emite 03-revocaciones.sql.
+
+    Se lee del MOTOR y no se calcula aqui: el que sabe cuantas revocaciones no
+    pudo aplicar es quien las intento.
+    """
+    for aviso in avisos:
+        m = re.search(r"SIN PRIVILEGIO:\s*(\d+)", aviso)
+        if m:
+            return int(m.group(1))
+    return 0
+
+
+def _escribir_estado(aplicadas: int, sin_privilegio: int) -> None:
+    ESTADO.parent.mkdir(parents=True, exist_ok=True)
+    ESTADO.write_text(
+        json.dumps(
+            {
+                "revocaciones_aplicadas": aplicadas,
+                "revocaciones_sin_privilegio": sin_privilegio,
+                "esperadas": ESPERADAS,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
 def _ya_esta(conexion) -> bool:
     fila = conexion.execute(
         "SELECT to_regclass('consulta.cuotas') IS NOT NULL"
@@ -89,9 +133,21 @@ def main() -> int:
         print("Falta CLAVE_RO: es la contraseña del rol restringido.", file=sys.stderr)
         return 2
 
+    avisos: list[str] = []
+
     with psycopg.connect(_url_owner(), autocommit=True) as conexion:
+        conexion.add_notice_handler(lambda d: avisos.append(d.message_primary or ""))
+
         if _ya_esta(conexion):
             filas = conexion.execute("SELECT count(*) FROM cartera.cuotas").fetchone()[0]
+            aplicadas = conexion.execute(
+                "SELECT count(*) FROM cartera.revocacion_aplicada"
+            ).fetchone()[0]
+            # No se reaplica el esquema, asi que el aviso del motor no vuelve a
+            # emitirse: el numero se deduce de lo que hay en la base. Es la
+            # misma cifra por otro camino, y sin ella un reinicio dejaria a la
+            # pantalla sin saber con cuantas capas esta corriendo.
+            _escribir_estado(aplicadas, max(0, ESPERADAS - aplicadas))
             print(f"El esquema ya está: {filas} cuotas. No se toca nada.", flush=True)
             return 0
 
@@ -116,7 +172,22 @@ def main() -> int:
             conexion.execute(sql)
 
         filas = conexion.execute("SELECT count(*) FROM cartera.cuotas").fetchone()[0]
+        aplicadas = conexion.execute(
+            "SELECT count(*) FROM cartera.revocacion_aplicada"
+        ).fetchone()[0]
+        sin_privilegio = _sin_privilegio(avisos)
+
+        _escribir_estado(aplicadas, sin_privilegio)
         print(f"Esquema aplicado: {filas} cuotas.", flush=True)
+        print(f"Revocaciones aplicadas: {aplicadas} · sin privilegio: {sin_privilegio}",
+              flush=True)
+        if sin_privilegio:
+            print(
+                f"AVISO: {sin_privilegio} rutinas no se pudieron revocar. Este "
+                f"motor no da superusuario, asi que la capa 2 de este despliegue "
+                f"es MENOR que la que mide el repositorio. La pantalla lo declara.",
+                flush=True,
+            )
         return 0
 
 
