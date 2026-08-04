@@ -186,7 +186,7 @@ alguien <strong>va a intentar romperlo</strong>, y está construido para eso.</p
 </ol>
 <p class="cd">Las reglas viven en código y tienen prueba: si se desactiva una,
 el build cae — y eso también se comprueba, apagando reglas a propósito en cada
-cambio. Hoy: <strong>284 pruebas en verde</strong>.</p>
+cambio. Hoy: <strong>286 pruebas en verde</strong>.</p>
 
 {formulario}
 
