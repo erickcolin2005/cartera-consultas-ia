@@ -135,7 +135,33 @@ def main() -> int:
 
     avisos: list[str] = []
 
-    with psycopg.connect(_url_owner(), autocommit=True) as conexion:
+    url = _url_owner()
+    # Sin la clave: solo el host y la base, para poder ver en el log CONTRA QUE
+    # se intento conectar sin publicar la credencial en el visor de la
+    # plataforma —que es una herramienta web y no la controlamos—.
+    import re as _re
+
+    print(f"Conectando a {_re.sub(r'//[^@]*@', '//***@', url)}", flush=True)
+
+    with psycopg.connect(url, autocommit=True) as conexion:
+        quien = conexion.execute(
+            "SELECT current_user, "
+            "(SELECT rolsuper FROM pg_roles WHERE rolname = current_user), "
+            "(SELECT rolcreaterole FROM pg_roles WHERE rolname = current_user)"
+        ).fetchone()
+        print(
+            f"Usuario: {quien[0]} · superusuario: {quien[1]} · "
+            f"puede crear roles: {quien[2]}",
+            flush=True,
+        )
+        if not quien[2]:
+            print(
+                "AVISO: este usuario NO puede crear roles. `02-permisos.sql` "
+                "necesita crear `consulta_ro`, que es el rol con el que la "
+                "aplicacion se conecta. Sin el, no hay capa 1.",
+                file=sys.stderr, flush=True,
+            )
+
         conexion.add_notice_handler(lambda d: avisos.append(d.message_primary or ""))
 
         if _ya_esta(conexion):
@@ -169,7 +195,25 @@ def main() -> int:
             # script no es una excepcion por ser de arranque.
             sql = sql.replace(":'clave_ro'", _literal(os.environ["CLAVE_RO"]))
             print(f"  {nombre}…", flush=True)
-            conexion.execute(sql)
+            try:
+                conexion.execute(sql)
+            except Exception as e:  # noqa: BLE001
+                # El log de una plataforma es lo UNICO que se va a poder mirar
+                # cuando esto falle, y una traza de Python ahi no dice cual de
+                # los cuatro scripts murio ni por que. Se dice, y se dice en la
+                # primera linea: quien lee un despliegue caido lee dos lineas.
+                print(f"FALLO en {nombre}", file=sys.stderr, flush=True)
+                print(f"  {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+                estado = getattr(e, "sqlstate", None)
+                if estado:
+                    print(f"  SQLSTATE: {estado}", file=sys.stderr, flush=True)
+                if estado == "42501":
+                    print(
+                        "  Es falta de PRIVILEGIO. Este motor no da lo que el "
+                        "esquema necesita; mira despliegue/preparar.py.",
+                        file=sys.stderr, flush=True,
+                    )
+                return 1
 
         filas = conexion.execute("SELECT count(*) FROM cartera.cuotas").fetchone()[0]
         aplicadas = conexion.execute(
