@@ -1,0 +1,59 @@
+# =====================================================================
+# Despliegue de la demo publica (I-9).
+#
+# LEER ANTES DE DESPLEGAR
+#   D13 exige un tope DURO de gasto en la consola del proveedor del
+#   modelo antes de publicar nada. No es una recomendacion del README:
+#   es la condicion sin la cual esta demo no debe existir, porque la
+#   clave queda detras de una URL publica.
+#   El limite de tasa por IP (app/limite.py) NO lo sustituye: frena a un
+#   visitante impaciente, no a alguien con cien direcciones.
+# =====================================================================
+services:
+  - type: web
+    name: cartera-consultas-ia
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /
+    envVars:
+      # La cadena de la base la inyecta Render desde el servicio de abajo.
+      # OWNER se usa solo para aplicar el esquema en el arranque.
+      - key: DATABASE_URL_OWNER
+        fromDatabase:
+          name: cartera-db
+          property: connectionString
+
+      # La que usa la aplicacion. Se compone a mano porque apunta al rol
+      # RESTRINGIDO, que crea 02-permisos.sql y que Render no conoce.
+      # Si algun dia la aplicacion se conectara con OWNER, las capas 1 y 2
+      # dejarian de existir y ninguna prueba lo detectaria.
+      - key: DATABASE_URL_RO
+        sync: false
+
+      - key: CLAVE_RO
+        generateValue: true
+
+      # Se pone a mano en el panel. NO va aqui ni en el repositorio.
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # Tope del proceso. Segunda capa, no sustituto de D13.
+      - key: TOPE_USD
+        value: "0.10"
+
+      # M-27. Mas bajo que en local: aqui el trafico no es de confianza.
+      - key: TOPE_PREGUNTAS_MINUTO
+        value: "6"
+      - key: TOPE_SQL_MINUTO
+        value: "30"
+
+      # El disco es efimero: la bitacora que cuenta es la de los logs.
+      - key: BITACORA_STDOUT
+        value: "1"
+
+databases:
+  - name: cartera-db
+    plan: free
+    databaseName: cartera
+    user: cartera_owner

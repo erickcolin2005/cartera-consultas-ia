@@ -549,7 +549,19 @@ class Manejador(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    puerto = int(os.environ.get("PUERTO_APP", "8000"))
-    print(f"  Abre  http://localhost:{puerto}")
-    print("  Ctrl+C para parar\n")
-    HTTPServer(("127.0.0.1", puerto), Manejador).serve_forever()
+    # `PORT` es lo que inyecta la plataforma de despliegue; `PUERTO_APP` es el
+    # de siempre en local. Se mira PORT primero para no tener que acordarse.
+    puerto = int(os.environ.get("PORT") or os.environ.get("PUERTO_APP", "8000"))
+
+    # 127.0.0.1 en local; 0.0.0.0 solo dentro del contenedor. Alli hay que
+    # escuchar en todas las interfaces o nadie llega; fuera, abrirlo por
+    # defecto seria publicar en la red local sin haberlo decidido.
+    interfaz = os.environ.get(
+        "INTERFAZ", "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
+    )
+
+    print(f"  Escuchando en {interfaz}:{puerto}")
+    if interfaz == "127.0.0.1":
+        print(f"  Abre  http://localhost:{puerto}")
+    print("  Ctrl+C para parar", flush=True)
+    HTTPServer((interfaz, puerto), Manejador).serve_forever()
