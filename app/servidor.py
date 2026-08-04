@@ -40,6 +40,8 @@ from guardian.contrato import LIMITE_FILAS  # noqa: E402
 from app import bitacora  # noqa: E402
 from app.ejecutor import ejecutar  # noqa: E402
 from guardian.nucleo import veredicto  # noqa: E402
+from ia import contexto as ctx  # noqa: E402
+from ia.orquestador import responder  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parent.parent
 
@@ -69,6 +71,32 @@ CATALOGO = Catalogo.desde_dict(
 )
 
 TOPE_SQL = 4000
+TOPE_PREGUNTA = 500
+
+# El contexto se construye UNA vez: es determinista, y ademas asi el prefijo
+# que se manda al proveedor es identico entre consultas y aplica la tarifa
+# cacheada. Medido: 9216 de 9494 tokens cacheados en cuatro preguntas.
+CONTEXTO = ctx.construir(
+    yaml.safe_load((RAIZ / "catalogo.yaml").read_text(encoding="utf-8"))
+)
+
+
+def _adaptador():
+    """El proveedor, o `None` si no hay clave.
+
+    Sin clave la pantalla sigue sirviendo la via SQL entera. No es un apaño:
+    es la propiedad de que la demostracion de contencion NO dependa de un
+    tercero. Con el proveedor caido se siguen pudiendo enseñar el rechazo, el
+    contador y la bitacora.
+    """
+    if not os.environ.get("OPENAI_API_KEY"):
+        return None
+    from ia.adaptador import OpenAI
+
+    return OpenAI(tope_usd=float(os.environ.get("TOPE_USD", "0.10")))
+
+
+ADAPTADOR = _adaptador()
 
 # Los ejemplos llevan su desenlace en la etiqueta A PROPOSITO: asi los tres
 # comportamientos diferenciadores quedan LEIDOS sin pulsar nada, que es como un
@@ -113,6 +141,30 @@ def pagina(cuerpo: str) -> bytes:
 <body><main>{cuerpo}</main></body></html>""".encode()
 
 
+def formulario_pregunta() -> str:
+    """El campo en español. Si no hay proveedor, se dice — no se esconde.
+
+    Esconder el campo dejaria la pantalla coherente y la promesa del titulo
+    sin cumplir en silencio. Decirlo cuesta una linea y es exacto.
+    """
+    if ADAPTADOR is None:
+        return """<section class="cd"><h2>Preguntar en español está apagado</h2>
+<p>No hay clave del proveedor configurada, así que la traducción de pregunta a
+SQL no está disponible. <strong>Todo lo demás sigue funcionando</strong>: la
+comprobación previa, el rechazo con su regla, el contador y el registro. Que la
+demostración de contención no dependa de un tercero es una propiedad del
+diseño, no una casualidad.</p></section>"""
+    return f"""
+<form method="get" action="/">
+<label for="pregunta">Pregunta en español (máximo {TOPE_PREGUNTA} caracteres)</label>
+<textarea id="pregunta" name="pregunta" rows="2"
+ placeholder="¿cuánto se debe en total?"></textarea>
+<p class="aviso">Un modelo escribe el SQL. <strong>Lo que escriba pasa por la
+misma comprobación</strong> que si lo escribieras tú.</p>
+<button type="submit">Preguntar</button>
+</form>"""
+
+
 def cabecera() -> str:
     filas = "".join(
         f'<li><a href="/?sql={e(sql)}"><code>{e(sql[:70])}{"…" if len(sql) > 70 else ""}'
@@ -121,6 +173,7 @@ def cabecera() -> str:
     )
     si = "".join(f"<li><code>{e(x)}</code></li>" for x in ALCANCE_SI)
     no = "".join(f"<li>{e(x)}</li>" for x in ALCANCE_NO)
+    formulario = formulario_pregunta()
     return f"""
 <h1>Consultas sobre datos de cartera, con contención verificable</h1>
 <p class="sub">Un modelo de lenguaje escribe consultas sobre una base de datos de
@@ -135,8 +188,10 @@ alguien <strong>va a intentar romperlo</strong>, y está construido para eso.</p
 el build cae — y eso también se comprueba, apagando reglas a propósito en cada
 cambio. Hoy: <strong>212 pruebas en verde</strong>.</p>
 
+{formulario}
+
 <form method="get" action="/">
-<label for="sql">Escribe una consulta SQL (máximo {TOPE_SQL} caracteres)</label>
+<label for="sql">…o escribe el SQL directamente (máximo {TOPE_SQL} caracteres)</label>
 <textarea id="sql" name="sql" rows="4"></textarea>
 <p class="aviso">Datos sintéticos, inventados para este proyecto.
 No escribas datos personales reales.</p>
@@ -251,6 +306,87 @@ sentencia que corre y trae el conjunto entero—. Quita lo que no haga falta y
 vuelve a enviarla.</p></section>"""
 
 
+def bloque_ambigua(d) -> str:
+    """La repregunta. Cada opción es un enlace a la vía SQL de siempre.
+
+    ESO ES LO IMPORTANTE, Y NO SE VE: la opción elegida vuelve por `/?sql=` y
+    **pasa el guardián otra vez**. La elección del usuario es entrada no
+    confiable como cualquier otra — que el SQL lo escribiera el modelo hace un
+    momento y ya pasara una validación no le da salvoconducto.
+
+    Y no se ejecutó nada para llegar aquí. No hay «calculo la lectura más
+    probable y aviso»: el error es asimétrico, porque una repregunta molesta
+    es recuperable y un número con aire de certeza es invisible.
+    """
+    opciones = "".join(
+        f'<li><a href="/?sql={e(v.sql_a_ejecutar)}"><code>{e(o.texto)}</code>'
+        f"<span>{e(o.sql[:110])}{'…' if len(o.sql) > 110 else ''}</span></a></li>"
+        for o, v in d.opciones
+    )
+    descartadas = (
+        f'<p class="apoyo">El modelo ofreció {d.descartadas} opción'
+        f'{"es" if d.descartadas > 1 else ""} más que la comprobación previa '
+        f"descartó: no llegaron a enseñarse.</p>"
+        if d.descartadas
+        else ""
+    )
+    return f"""
+<section class="coherencia">
+<h2>Tu pregunta admite más de una respuesta</h2>
+<p class="msg">{e(d.pregunta)}</p>
+<ul class="ejemplos">{opciones}</ul>
+{descartadas}
+<p class="apoyo">Ninguna se ejecutó. <b>Sentencias enviadas: 0.</b> Cada opción
+trae su consulta ya escrita y <b>ya validada</b>; al elegir una, vuelve a pasar
+la misma comprobación. Preguntar es preferible a acertar por probabilidad: una
+repregunta molesta se corrige, un número equivocado con aire de certeza no.</p>
+</section>"""
+
+
+def bloque_sin_datos(d) -> str:
+    """«No hay datos para eso». El comportamiento que depende del modelo.
+
+    Y se dice en pantalla, porque es la distinción que separa este bloque del
+    rechazo: el rechazo lo garantiza el código; esto lo decide el modelo.
+    """
+    disponibles = "".join(f"<li><code>{e(x)}</code></li>" for x in d.disponibles)
+    return f"""
+<section class="coherencia">
+<h2>No hay datos para eso</h2>
+<p class="msg">Este conjunto no tiene {e(d.falta)}.</p>
+<p class="apoyo">No te devuelvo una tabla que responda otra cosa parecida, que
+es lo que haría un sistema servicial. <b>Sentencias enviadas: 0.</b></p>
+<h3>Lo que sí hay</h3><ul>{disponibles}</ul>
+<p class="apoyo"><b>Esto depende del modelo, y conviene decirlo.</b> El rechazo
+de lo destructivo lo garantiza el código y está medido; reconocer una pregunta
+sin respuesta, no. Si el modelo fallara aquí, lo peor que puede pasar es que
+escriba una consulta que la comprobación previa rechace — nunca una tabla
+inventada.</p></section>"""
+
+
+def bloque_error_ia(d) -> str:
+    return f"""<section class="rechazo"><h2>No pude responder</h2>
+<p class="msg">{e(d.mensaje)}</p>
+<p class="apoyo">Sentencias enviadas a la base de datos: <b>0</b>. Puedes
+escribir el SQL directamente: esa vía no depende del proveedor del modelo.</p>
+</section>"""
+
+
+def bloque_pregunta_traducida(d, r) -> str:
+    """La consulta que salió de una pregunta. Enseña la interpretación.
+
+    Es RF-14: el resultado declara qué entendió el sistema. Sin eso, quien
+    mira no puede saber si el número responde a su pregunta o a otra parecida.
+    """
+    return f"""
+<section class="ok">
+<h2>Lo que entendí</h2>
+<p class="msg">{e(d.interpretacion)}</p>
+<p class="apoyo">Si no es lo que preguntabas, la consulta de abajo te dice
+exactamente por qué: es la que se ejecutó, sin retoques.</p>
+</section>"""
+
+
 class Manejador(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         ruta = urlparse(self.path)
@@ -262,7 +398,12 @@ class Manejador(BaseHTTPRequestHandler):
         if ruta.path != "/":
             return self._envia(pagina("<h1>No existe.</h1>"), "text/html", 404)
 
-        sql = (parse_qs(ruta.query).get("sql") or [""])[0]
+        parametros = parse_qs(ruta.query)
+        pregunta = (parametros.get("pregunta") or [""])[0]
+        if pregunta.strip():
+            return self._responde_pregunta(pregunta)
+
+        sql = (parametros.get("sql") or [""])[0]
         if not sql.strip():
             return self._envia(pagina(cabecera()), "text/html")
 
@@ -284,6 +425,30 @@ class Manejador(BaseHTTPRequestHandler):
             cuerpo = bloque_coherencia(v, r)
         else:
             cuerpo = bloque_rechazo(v, r, registrado)
+        return self._envia(pagina(cuerpo + cabecera()), "text/html")
+
+    def _responde_pregunta(self, pregunta: str):
+        """La vía en lenguaje natural. Termina SIEMPRE en uno de cinco sitios."""
+        if ADAPTADOR is None:
+            return self._envia(pagina(cabecera()), "text/html")
+
+        d = responder(pregunta, CONTEXTO, CATALOGO, ADAPTADOR)
+
+        if d.clase == "consulta":
+            r = ejecutar(d.veredicto)
+            bitacora.registrar(d.veredicto, r, via="pn")
+            cuerpo = bloque_pregunta_traducida(d, r) + bloque_resultado(d.veredicto, r)
+        elif d.clase == "rechazo":
+            r = ejecutar(d.veredicto)
+            registrado = bitacora.registrar(d.veredicto, r, via="pn")
+            cuerpo = bloque_rechazo(d.veredicto, r, registrado)
+        elif d.clase == "ambigua":
+            cuerpo = bloque_ambigua(d)
+        elif d.clase == "sin_datos":
+            cuerpo = bloque_sin_datos(d)
+        else:
+            cuerpo = bloque_error_ia(d)
+
         return self._envia(pagina(cuerpo + cabecera()), "text/html")
 
     def _envia(self, datos: bytes, tipo: str, codigo: int = 200):
