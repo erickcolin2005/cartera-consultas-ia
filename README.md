@@ -345,13 +345,24 @@ líneas en el registro del motor —`BEGIN`, la consulta, `COMMIT`— mientras
 nuestro contador marca **1**. Las dos extra las añade el driver y no pasan por
 el envoltorio del cursor. En un rechazo no hay ninguna de las tres.
 
-### ❌ Todavía no existe
+### Las trece pruebas del diseño están escritas
 
-El **traductor de errores completo**. Con él, tres de las trece pruebas:
-**T-2** (degradación), **T-6** (los cuatro tipos de respuesta) y **T-12**
-(traductor). **T-10** —superficie de salida y CSP— tampoco está escrita, aunque
-la CSP sí se envía. Están nombradas para que su ausencia sea visible en vez de
-deducible.
+Esta sección decía «todavía no existe» durante todo el proyecto. Ya no queda
+ninguna: **T-2** (degradación), **T-6** (los cuatro tipos de respuesta),
+**T-10** (superficie de salida y CSP) y **T-12** (traductor de errores) fueron
+las últimas.
+
+**T-2 es la que más pesa**, y es distinta de todas las demás: el resto
+comprueba que el guardián rechaza; ésta comprueba **qué pasa cuando el guardián
+no está**. Se le pasa al ejecutor un veredicto nulo que permite todo, y se mide
+qué contienen las capas 1 y 2 solas. Sin ella, «cuatro capas» era una figura
+retórica — nadie había comprobado nunca que la segunda existiera por separado.
+
+Y mide también las excepciones **afirmando que fallan**: el catálogo del motor
+sigue siendo alcanzable, el límite de filas no lo pone el motor. Si algún día
+dejaran de fallar, la prueba se pone en rojo y hay que actualizar lo que este
+README declara. Una excepción que se cierra sola es tan informativa como una
+que se abre.
 
 **Lo que este repositorio puede afirmar hoy:**
 
