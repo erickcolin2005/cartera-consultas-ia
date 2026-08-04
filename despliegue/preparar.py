@@ -139,10 +139,38 @@ def _escribir_estado(aplicadas: int, sin_privilegio: int) -> None:
 
 
 def _ya_esta(conexion) -> bool:
+    """Si esta base ya esta LISTA. No: si ya esta empezada.
+
+    LA VERSION ANTERIOR ERA EL DEFECTO QUE ESTE MISMO FICHERO DESCRIBIA.
+    Comprobaba que existiera la vista `consulta.cuotas`, y esa vista la crea el
+    PRIMER script. Bastaba con que un arranque muriera despues de `01` —y eso
+    paso: murio en las revocaciones— para que todos los siguientes dijeran "ya
+    esta" y se saltaran la carga de datos.
+
+    Resultado en Render: la demo publica sirvio una base VACIA. La pantalla
+    respondia, el guardian rechazaba, el contador contaba... y las consultas
+    legitimas devolvian cero filas. Todo parecia funcionar.
+
+    La cabecera de arriba advierte contra "una marca que puede quedar puesta con
+    el esquema a medias" y concluye que preguntar por lo que de verdad hace
+    falta no tiene ese modo de fallo. La conclusion era correcta; lo que estaba
+    mal era la eleccion de QUE hace falta de verdad. La vista existiendo no es
+    el sistema listo: los DATOS son el sistema listo.
+    """
     fila = conexion.execute(
-        "SELECT to_regclass('consulta.cuotas') IS NOT NULL"
+        "SELECT to_regclass('cartera.cuotas') IS NOT NULL"
     ).fetchone()
-    return bool(fila and fila[0])
+    if not (fila and fila[0]):
+        return False
+    filas = conexion.execute("SELECT count(*) FROM cartera.cuotas").fetchone()[0]
+    if filas == 0:
+        print(
+            "La base tiene esquema pero NO tiene datos: un arranque anterior "
+            "murió a mitad. Se vuelve a aplicar.",
+            flush=True,
+        )
+        return False
+    return True
 
 
 def main() -> int:
@@ -201,6 +229,16 @@ def main() -> int:
             _escribir_estado(aplicadas, max(0, ESPERADAS - aplicadas))
             print(f"El esquema ya está: {filas} cuotas. No se toca nada.", flush=True)
             return 0
+
+        # Si quedaron restos de un arranque muerto a mitad, se barren. Los
+        # scripts no son idempotentes —`CREATE TABLE` sobre lo existente falla—
+        # y aqui no hay nada que conservar: los datos son SINTETICOS y se
+        # regeneran identicos, con la huella que lo comprueba.
+        #
+        # Esto seria inaceptable contra datos reales, y por eso esta acotado a
+        # `despliegue/`: es el arranque de una demo, no una migracion.
+        for esquema in ("consulta", "cartera"):
+            conexion.execute(f"DROP SCHEMA IF EXISTS {esquema} CASCADE")
 
         print("Base vacía. Aplicando el esquema…", flush=True)
         for nombre in GUION:
