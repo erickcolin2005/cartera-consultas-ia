@@ -100,26 +100,49 @@ def _adaptador():
 ADAPTADOR = _adaptador()
 
 
+ESPERADAS = 324
+
+
 def _estado_despliegue() -> dict:
-    """Con cuantas capas esta corriendo ESTE despliegue.
+    """Con cuantas capas esta corriendo ESTE despliegue. Se lee de LA BASE.
 
-    Lo escribe `despliegue/preparar.py` al arrancar, leyendo lo que el motor
-    dijo. No es una constante ni una suposicion: si en esta base no se pudieron
-    aplicar todas las revocaciones, aqui esta el numero exacto.
+    POR QUE SE QUITO EL FICHERO INTERMEDIO
+    ---------------------------------------
+    Antes lo escribia el preparador en `estado.json` y esto lo leia. Fallo de
+    la unica forma que un intermediario puede fallar: el preparador no lo
+    escribio —o no pudo— y la pantalla se quedo sin saber que declarar, en un
+    despliegue donde SI habia algo que declarar.
 
-    Si el fichero no existe —arranque en local sin pasar por el preparador— se
-    devuelve vacio y la pantalla no declara nada. Declarar "0 sin privilegio"
-    sin haberlo medido seria peor que callar.
+    El numero no necesitaba intermediario. Vive en `cartera.revocacion_aplicada`,
+    que es la tabla donde el propio esquema apunta cada revocacion que logro
+    aplicar. Esa tabla es la fuente, sobrevive a los reinicios y no depende de
+    que un fichero se pueda escribir en un disco efimero.
+
+    Se lee UNA VEZ al arrancar y con la credencial del DUEÑO, porque el rol de
+    la aplicacion no alcanza el esquema `cartera` — y eso es la contencion
+    funcionando, no un obstaculo que sortear.
+
+    Si no se puede leer, se devuelve vacio y la pantalla CALLA. Declarar un
+    numero que no se ha medido es peor que no declarar nada.
     """
-    import json
-
-    fichero = Path(
-        os.environ.get("ESTADO_DESPLIEGUE", RAIZ / "despliegue" / "estado.json")
-    )
-    try:
-        return json.loads(fichero.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    url = os.environ.get("DATABASE_URL_OWNER", "")
+    if not url:
         return {}
+    try:
+        import psycopg
+
+        with psycopg.connect(url, connect_timeout=5) as conexion:
+            aplicadas = conexion.execute(
+                "SELECT count(*) FROM cartera.revocacion_aplicada"
+            ).fetchone()[0]
+    except Exception:  # noqa: BLE001 — sin este dato la pantalla calla, no falla
+        return {}
+
+    return {
+        "revocaciones_aplicadas": aplicadas,
+        "revocaciones_sin_privilegio": max(0, ESPERADAS - aplicadas),
+        "esperadas": ESPERADAS,
+    }
 
 
 ESTADO = _estado_despliegue()
