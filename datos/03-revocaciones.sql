@@ -146,6 +146,11 @@ DECLARE
     total         integer := 0;
     n_distintas   integer;
     huerfanos     text[]  := '{}';
+    -- Cuantas revocaciones NO se pudieron aplicar por falta de privilegio.
+    -- En local, con superusuario, vale 0 y ese 0 es una asercion: si subiera,
+    -- algo cambio en el motor. En una base gestionada sera >0, y ese numero es
+    -- exactamente lo que la demo publica tiene que declarar.
+    sin_privilegio integer := 0;
 BEGIN
     FOR p IN SELECT clase, patron FROM cartera.politica_revocacion ORDER BY clase, patron
     LOOP
@@ -166,14 +171,39 @@ BEGIN
         LOOP
             -- ROUTINE cubre funciones y procedimientos sin tener que saber
             -- de antemano cual es cada una.
-            EXECUTE format('REVOKE EXECUTE ON ROUTINE %s FROM PUBLIC', f.firma);
-
-            INSERT INTO cartera.revocacion_aplicada (oid_funcion, firma, esquema, clase, patron)
-            VALUES (f.oid, f.firma, f.esquema, p.clase, p.patron)
-            ON CONFLICT (oid_funcion) DO NOTHING;
-
+            -- REVOKE exige ser DUEÑO del objeto o superusuario. En una base
+            -- gestionada —Render, y cualquier otra— el usuario que te dan no
+            -- es superusuario, y las funciones de pg_catalog las posee el
+            -- superusuario del motor: `pg_sleep`, `has_table_privilege`,
+            -- `pg_read_file`... Ahi esto NO puede aplicarse.
+            --
+            -- Se captura ESE error y solo ese, y se CUENTA. Tragarlo en
+            -- silencio dejaria un despliegue que parece completo y no lo esta;
+            -- abortar impediria publicar la demo. Contarlo permite lo unico
+            -- honesto: publicar declarando cuantas capas hay de verdad.
+            --
+            -- Cualquier otro error SIGUE PROPAGANDOSE. La tolerancia es a la
+            -- falta de privilegio, no a que algo salga mal.
+            -- La COINCIDENCIA se cuenta siempre, aunque la revocacion no se
+            -- pueda aplicar: mide que el patron encontro la funcion, no que
+            -- tuvieramos permiso. Contarla dentro del bloque protegido dejaba
+            -- `n_coincide` en cero cuando faltaba privilegio, y el guardia de
+            -- patrones huerfanos —el de mas abajo— concluia que la funcion NO
+            -- EXISTE en el motor. Un control gritando la causa equivocada es
+            -- peor que no tenerlo: manda a investigar al sitio que no es.
             n_coincide := n_coincide + 1;
-            total      := total + 1;
+
+            BEGIN
+                EXECUTE format('REVOKE EXECUTE ON ROUTINE %s FROM PUBLIC', f.firma);
+
+                INSERT INTO cartera.revocacion_aplicada (oid_funcion, firma, esquema, clase, patron)
+                VALUES (f.oid, f.firma, f.esquema, p.clase, p.patron)
+                ON CONFLICT (oid_funcion) DO NOTHING;
+
+                total := total + 1;
+            EXCEPTION WHEN insufficient_privilege THEN
+                sin_privilegio := sin_privilegio + 1;
+            END;
         END LOOP;
 
         IF n_coincide = 0 THEN
@@ -200,6 +230,14 @@ BEGIN
     SELECT count(*) INTO n_distintas FROM cartera.revocacion_aplicada;
     RAISE NOTICE 'REVOCACION · operaciones emitidas: %  ·  RUTINAS DISTINTAS revocadas: %',
                  total, n_distintas;
+
+    -- La linea que el despliegue lee para saber que capa tiene de verdad.
+    -- Se emite SIEMPRE, tambien cuando vale 0: un contador que solo aparece
+    -- cuando hay problema entrena a no buscarlo.
+    RAISE NOTICE 'REVOCACION · SIN PRIVILEGIO: %', sin_privilegio;
+    IF sin_privilegio > 0 THEN
+        RAISE WARNING 'REVOCACION · % rutinas NO se pudieron revocar: este motor no da superusuario. La capa 2 de este despliegue es MENOR que la que mide el repositorio.', sin_privilegio;
+    END IF;
 
     IF array_length(huerfanos, 1) IS NOT NULL THEN
         RAISE EXCEPTION

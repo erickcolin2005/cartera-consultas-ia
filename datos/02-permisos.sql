@@ -13,7 +13,35 @@
 -- No es `default_transaction_read_only`: ese parametro es sobrescribible
 -- desde la propia sesion. Lo que detiene un DELETE es que el rol no tenga
 -- el privilegio, y eso no se puede desactivar desde dentro de una consulta.
-CREATE ROLE consulta_ro LOGIN PASSWORD :'clave_ro';
+-- IDEMPOTENTE. `CREATE ROLE` a secas rompia el reintento del despliegue: los
+-- roles son del CLUSTER, no de la base, asi que si el arranque fallaba despues
+-- de este punto —por ejemplo en las revocaciones— el siguiente intento moria
+-- con "role already exists" y el despliegue quedaba atascado para siempre.
+-- Se descubrio reproduciendo el despliegue de Render en local el 2026-08-04.
+--
+-- Se actualiza la clave tambien cuando ya existe: si no, un rol creado en un
+-- intento anterior conservaria una clave que ya nadie conoce.
+-- La clave viaja por un parametro de sesion y no directamente al bloque.
+-- Motivo: psql NO sustituye sus variables dentro de un texto entrecomillado
+-- con dolares, asi que `:'clave_ro'` ahi dentro llega literal y es un error de
+-- sintaxis. Fuera del bloque si se sustituye, en los dos cargadores: psql en
+-- local y `despliegue/preparar.py` en el despliegue.
+SET cartera.clave_ro = :'clave_ro';
+
+DO $rol$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'consulta_ro') THEN
+        EXECUTE format('ALTER ROLE consulta_ro LOGIN PASSWORD %L',
+                       current_setting('cartera.clave_ro'));
+    ELSE
+        EXECUTE format('CREATE ROLE consulta_ro LOGIN PASSWORD %L',
+                       current_setting('cartera.clave_ro'));
+    END IF;
+END
+$rol$;
+
+-- La clave no se queda en la sesion mas de lo necesario.
+RESET cartera.clave_ro;
 
 -- ---- MAMPARO DE CONCURRENCIA (R-22) ----
 -- Sin pool, nada acota las conexiones concurrentes: cada una se retiene hasta
