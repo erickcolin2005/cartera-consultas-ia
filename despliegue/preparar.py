@@ -105,18 +105,37 @@ def _sin_privilegio(avisos: list[str]) -> int:
 
 
 def _escribir_estado(aplicadas: int, sin_privilegio: int) -> None:
-    ESTADO.parent.mkdir(parents=True, exist_ok=True)
-    ESTADO.write_text(
-        json.dumps(
-            {
-                "revocaciones_aplicadas": aplicadas,
-                "revocaciones_sin_privilegio": sin_privilegio,
-                "esperadas": ESPERADAS,
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
+    """Deja constancia de con cuantas capas corre este despliegue.
+
+    NO PUEDE TUMBAR EL ARRANQUE. Es un fichero de diagnostico: si el sistema de
+    ficheros es de solo lectura, o el usuario del contenedor no puede escribir
+    ahi, el servicio tiene que seguir en pie —simplemente la pantalla no
+    declarara el numero, que es el comportamiento ya previsto cuando el fichero
+    no existe—.
+
+    Esta funcion se escribio SIN este try, y ese fue el defecto: un despliegue
+    que ya arrancaba dejo de arrancar por no poder escribir un JSON de tres
+    campos. El diagnostico no puede ser mas fragil que lo diagnosticado.
+    """
+    try:
+        ESTADO.parent.mkdir(parents=True, exist_ok=True)
+        ESTADO.write_text(
+            json.dumps(
+                {
+                    "revocaciones_aplicadas": aplicadas,
+                    "revocaciones_sin_privilegio": sin_privilegio,
+                    "esperadas": ESPERADAS,
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+    except OSError as e:
+        print(
+            f"AVISO: no se pudo escribir {ESTADO} ({e}). El servicio sigue; "
+            f"la pantalla no declarará el número de revocaciones.",
+            file=sys.stderr, flush=True,
+        )
 
 
 def _ya_esta(conexion) -> bool:
@@ -166,9 +185,15 @@ def main() -> int:
 
         if _ya_esta(conexion):
             filas = conexion.execute("SELECT count(*) FROM cartera.cuotas").fetchone()[0]
-            aplicadas = conexion.execute(
-                "SELECT count(*) FROM cartera.revocacion_aplicada"
-            ).fetchone()[0]
+            # Tolerante: si la tabla de revocaciones no existiera —esquema de
+            # una version anterior— eso NO es motivo para no arrancar. Lo unico
+            # que se pierde es el numero que declara la pantalla.
+            try:
+                aplicadas = conexion.execute(
+                    "SELECT count(*) FROM cartera.revocacion_aplicada"
+                ).fetchone()[0]
+            except Exception:  # noqa: BLE001
+                aplicadas = 0
             # No se reaplica el esquema, asi que el aviso del motor no vuelve a
             # emitirse: el numero se deduce de lo que hay en la base. Es la
             # misma cifra por otro camino, y sin ella un reinicio dejaria a la
