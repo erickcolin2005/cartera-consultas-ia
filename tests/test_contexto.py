@@ -52,24 +52,66 @@ TEXTO = contexto.construir(CATALOGO_CRUDO)
 
 
 def test_t5b_ninguna_fila_de_la_base_aparece_en_el_contexto(conexion_ro):
-    """Centinelas tomados del motor. Si alguno aparece, hay fuga."""
+    """Centinelas tomados del motor. Si alguno aparece, hay fuga.
+
+    DOS DECISIONES QUE PARECEN DETALLE Y NO LO SON
+    -----------------------------------------------
+    **`ORDER BY` en cada consulta.** La primera versión usaba `LIMIT 5` a
+    secas, y sin orden PostgreSQL puede devolver filas distintas en cada
+    ejecución. Pasaba en la máquina de desarrollo y falló en el CI con otra
+    muestra. Una prueba de seguridad que mira un puñado de filas al azar es
+    intermitente por construcción, y una prueba intermitente acaba desactivada.
+
+    **Frontera de palabra, no subcadena.** El fallo del CI fue el centinela
+    `202` —un código de unidad— «apareciendo» en el texto. No era una fuga:
+    `202` está dentro de `2025-01-01` y de `2026-07-05`, que son los rangos
+    publicados. Buscar subcadenas convierte todo valor corto en un falso
+    positivo, y un falso positivo en una prueba de fuga es tan malo como un
+    falso negativo: la primera vez se investiga, la segunda se ignora.
+    """
     centinelas: list[str] = []
-    for consulta, columna in [
-        ("SELECT propietario_nombre FROM consulta.unidades LIMIT 5", "nombre"),
-        ("SELECT codigo FROM consulta.unidades LIMIT 5", "codigo"),
-        ("SELECT DISTINCT referencia FROM consulta.pagos LIMIT 5", "referencia"),
-        ("SELECT saldo::text FROM consulta.cuotas WHERE saldo > 0 LIMIT 5", "saldo"),
+    for consulta in [
+        "SELECT propietario_nombre FROM consulta.unidades ORDER BY 1 LIMIT 5",
+        "SELECT codigo FROM consulta.unidades ORDER BY 1 LIMIT 5",
+        "SELECT DISTINCT referencia FROM consulta.pagos ORDER BY 1 LIMIT 5",
+        "SELECT saldo::text FROM consulta.cuotas WHERE saldo > 0 ORDER BY 1 LIMIT 5",
     ]:
         centinelas += [str(f[0]) for f in conexion_ro.execute(consulta).fetchall()]
 
-    assert centinelas, "No se pudo leer ningún centinela: la prueba no mediría nada."
-
-    filtrados = [c for c in centinelas if c and c in TEXTO]
-    assert not filtrados, (
-        f"Estos valores salen de las tablas y aparecen en el texto que se envía "
-        f"al proveedor: {filtrados}. D6 dice que del contenido de las tablas no "
-        f"sale nada."
+    assert len(centinelas) >= 15, (
+        f"Solo {len(centinelas)} centinelas: la prueba apenas mediría nada."
     )
+
+    import re
+
+    filtrados = [
+        c for c in centinelas
+        if c and re.search(rf"(?<!\w){re.escape(c)}(?!\w)", TEXTO)
+    ]
+    assert not filtrados, (
+        f"Estos valores salen de las tablas y aparecen COMO VALOR en el texto "
+        f"que se envía al proveedor: {filtrados}. D6 dice que del contenido de "
+        f"las tablas no sale nada."
+    )
+
+
+def test_t5b_el_centinela_sabe_detectar_una_fuga_de_verdad():
+    """Un detector que nunca encuentra nada confirma cualquier cosa.
+
+    Se le da un texto que SÍ lleva un valor de la base y se exige que lo vea.
+    Sin esto, la prueba de arriba pasaría igual con una expresión regular rota
+    — que es exactamente lo que estuvo a punto de ocurrir al arreglar el falso
+    positivo del `202`.
+    """
+    import re
+
+    texto_con_fuga = TEXTO + "\n\nEjemplo: la unidad 302 debe 1250000.00"
+    for valor in ("302", "1250000.00"):
+        assert re.search(rf"(?<!\w){re.escape(valor)}(?!\w)", texto_con_fuga), (
+            f"El detector no ve `{valor}` en un texto que sí lo lleva."
+        )
+    # Y que no lo ve en el texto real, que es el otro lado de la moneda.
+    assert not re.search(r"(?<!\w)1250000\.00(?!\w)", TEXTO)
 
 
 def test_t5b_el_constructor_no_importa_nada_que_pueda_leer_datos():
