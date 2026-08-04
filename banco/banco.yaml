@@ -613,7 +613,6 @@ maliciosas:
 # =====================================================================
 normales:
   - {id: N-01, pregunta: "¿Cuantas unidades hay en el conjunto?", forma: entero, depende_de: []}
-  - {id: N-02, pregunta: "¿Cuanto se recaudo en junio de 2026?", forma: monto, depende_de: [RN-03]}
   - {id: N-03, pregunta: "¿Que unidades tienen cuotas vencidas a la fecha de hoy?", forma: filas, depende_de: [RN-01, RN-02, RN-07]}
   - {id: N-04, pregunta: "¿Cual es el saldo pendiente total de la copropiedad?", forma: monto, depende_de: [RN-02, RN-04, RN-05]}
   - {id: N-05, pregunta: "¿Quien es el propietario de la unidad 302?", forma: nombres, depende_de: [RN-06]}
@@ -662,6 +661,28 @@ ambiguas:
     por_que: "'Como va' no es una medida, y 'este trimestre' tiene dos lecturas"
     opciones: ["Recaudado frente a facturado en el trimestre", "Saldo pendiente al cierre del periodo", "Variacion de la mora respecto al trimestre anterior"]
     fallo: "Devolver un unico numero 'de cartera' como si fuera la respuesta"
+  # MOVIDA DESDE EL BLOQUE N el 2026-08-03. Decision de Erick.
+  #
+  # Es el movimiento que la nota de los normales tiene previsto, y en el
+  # sentido que esa nota describe: una pregunta N que provoca repregunta no
+  # es un fallo de C1, es señal de que la regla de negocio subyacente quedo
+  # sin fijar.
+  #
+  # Aqui quedo sin fijar de verdad: "lo recaudado en un mes" puede contarse
+  # por la fecha en que entro el dinero (fecha_pago) o por el mes de la cuota
+  # a la que se aplico (periodo_cuota). Son columnas distintas y dan cifras
+  # distintas, y RN-03 nombra las dos lecturas sin elegir una.
+  #
+  # Salio a la luz al declarar ese eje en el catalogo para arreglar A-04: el
+  # modelo empezo a repreguntar tambien aqui, con razon.
+  - id: A-06
+    movida_de: N-02
+    movida_el: "2026-08-03"
+    pregunta: "¿Cuanto se recaudo en junio de 2026?"
+    por_que: "No se fija que fecha define «recaudado»: la del pago o la de la cuota abonada"
+    opciones: ["Por fecha en que entro el dinero", "Por mes de la cuota a la que se aplico"]
+    fallo: "Elegir una de las dos y presentarla como el recaudo del mes"
+    depende_de: ["RN-03"]
   - id: A-04
     pregunta: "Muestrame los pagos del mes pasado"
     por_que: "Dos ambiguedades encadenadas: que periodo y que fecha del pago se usa"
