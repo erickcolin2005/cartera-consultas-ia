@@ -1,12 +1,12 @@
 {
   "modelo": "gpt-4.1-mini",
-  "cuando": "2026-08-03 22:26",
-  "gasto_usd": 0.012697,
+  "cuando": "2026-08-03 22:38",
+  "gasto_usd": 0.013857,
   "llamadas": 26,
   "tokens": {
-    "entrada": 70782,
-    "cacheados": 66560,
-    "salida": 2720
+    "entrada": 71926,
+    "cacheados": 64000,
+    "salida": 2679
   },
   "casos": [
     {
@@ -15,14 +15,14 @@
       "pregunta": "¿Cuantas unidades hay en el conjunto?",
       "veredicto": "REVISA",
       "clase": "consulta",
-      "detalle": "1 fila(s) · Cantidad total de unidades en la copropiedad.",
+      "detalle": "1 fila(s) · Cantidad total de unidades en la copropiedad según la tabla unidades.",
       "llamadas": 1,
       "descartadas": 0,
       "sql": "SELECT * FROM (SELECT COUNT(*) AS total_unidades FROM consulta.unidades) AS _acotado LIMIT 101",
-      "interpretacion": "Cantidad total de unidades en la copropiedad.",
+      "interpretacion": "Cantidad total de unidades en la copropiedad según la tabla unidades.",
       "filas": 1,
       "error_motor": null,
-      "ms": 2230
+      "ms": 1667
     },
     {
       "id": "N-03",
@@ -37,7 +37,7 @@
       "interpretacion": "Unidades con al menos una cuota vencida a la fecha de corte, y cuanto deben en total por esas cuotas vencidas.",
       "filas": 38,
       "error_motor": null,
-      "ms": 1772
+      "ms": 1982
     },
     {
       "id": "N-04",
@@ -52,7 +52,7 @@
       "interpretacion": "Suma total del saldo pendiente de todas las cuotas en la copropiedad a la fecha de corte.",
       "filas": 1,
       "error_motor": null,
-      "ms": 1778
+      "ms": 2301
     },
     {
       "id": "N-05",
@@ -67,7 +67,7 @@
       "interpretacion": "Nombre del propietario responsable de la unidad con código 302.",
       "filas": 1,
       "error_motor": null,
-      "ms": 1560
+      "ms": 1462
     },
     {
       "id": "N-06",
@@ -82,7 +82,7 @@
       "interpretacion": "Las 10 unidades con mayor saldo pendiente en cuotas vencidas a la fecha de corte, ordenadas de mayor a menor saldo vencido.",
       "filas": 10,
       "error_motor": null,
-      "ms": 2629
+      "ms": 2077
     },
     {
       "id": "N-07",
@@ -90,14 +90,14 @@
       "pregunta": "¿Cuantos pagos se registraron en el primer trimestre de 2026?",
       "veredicto": "REVISA",
       "clase": "consulta",
-      "detalle": "1 fila(s) · Cantidad de pagos registrados entre el 1 de enero y el 31 de marzo de 2026, según la fecha en que se recibió el dinero.",
+      "detalle": "1 fila(s) · Cantidad de pagos registrados entre el 1 de enero y el 31 de marzo de 2026, según la fecha en que entró el dinero.",
       "llamadas": 1,
       "descartadas": 0,
       "sql": "SELECT * FROM (SELECT COUNT(*) AS total_pagos FROM consulta.pagos WHERE fecha_pago >= '2026-01-01' AND fecha_pago < '2026-04-01') AS _acotado LIMIT 101",
-      "interpretacion": "Cantidad de pagos registrados entre el 1 de enero y el 31 de marzo de 2026, según la fecha en que se recibió el dinero.",
+      "interpretacion": "Cantidad de pagos registrados entre el 1 de enero y el 31 de marzo de 2026, según la fecha en que entró el dinero.",
       "filas": 1,
       "error_motor": null,
-      "ms": 2065
+      "ms": 2211
     },
     {
       "id": "N-09",
@@ -112,7 +112,7 @@
       "interpretacion": "Suma del valor facturado por cuotas de administracion durante el año 2026.",
       "filas": 1,
       "error_motor": null,
-      "ms": 1680
+      "ms": 2272
     },
     {
       "id": "N-10",
@@ -127,22 +127,22 @@
       "interpretacion": "Cantidad de propietarios que tienen más de una unidad en la copropiedad.",
       "filas": 1,
       "error_motor": null,
-      "ms": 1591
+      "ms": 1756
     },
     {
       "id": "N-11",
       "bloque": "normales",
       "pregunta": "¿Quienes son los morosos?",
-      "veredicto": "FALLO",
+      "veredicto": "REVISA",
       "clase": "consulta",
-      "detalle": "el motor la rechazó: Eso está fuera de lo que puedo consultar.",
+      "detalle": "31 fila(s) · Propietarios que tienen al menos una unidad con cuotas vencidas a la fecha de corte, es decir, morosos.",
       "llamadas": 1,
       "descartadas": 0,
-      "sql": "SELECT * FROM (SELECT propietario_nombre, SUM(saldo) AS deuda FROM consulta.cuotas WHERE estado = 'vencida' GROUP BY propietario_nombre ORDER BY deuda DESC) AS _acotado LIMIT 101",
-      "interpretacion": "Propietarios con al menos una cuota vencida a la fecha de corte y la suma de sus deudas vencidas.",
-      "filas": 0,
-      "error_motor": "Eso está fuera de lo que puedo consultar.",
-      "ms": 1862
+      "sql": "SELECT * FROM (SELECT DISTINCT u.propietario_nombre FROM consulta.unidades AS u JOIN consulta.cuotas AS c ON u.id = c.unidad_id WHERE c.estado = 'vencida') AS _acotado LIMIT 101",
+      "interpretacion": "Propietarios que tienen al menos una unidad con cuotas vencidas a la fecha de corte, es decir, morosos.",
+      "filas": 31,
+      "error_motor": null,
+      "ms": 2254
     },
     {
       "id": "A-01",
@@ -157,7 +157,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 3665
+      "ms": 4266
     },
     {
       "id": "A-02",
@@ -165,14 +165,14 @@
       "pregunta": "¿Como va la cartera este trimestre?",
       "veredicto": "OK",
       "clase": "ambigua",
-      "detalle": "2 opciones válidas, 0 descartadas",
+      "detalle": "3 opciones válidas, 0 descartadas",
       "llamadas": 1,
       "descartadas": 0,
       "sql": null,
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 3446
+      "ms": 4266
     },
     {
       "id": "A-07",
@@ -187,7 +187,7 @@
       "interpretacion": "Pagos realizados por la unidad 101 durante el año 2026, ordenados por fecha de pago.",
       "filas": 7,
       "error_motor": null,
-      "ms": 1859
+      "ms": 1963
     },
     {
       "id": "A-06",
@@ -202,7 +202,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 3301
+      "ms": 3837
     },
     {
       "id": "A-04",
@@ -217,7 +217,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 4492
+      "ms": 3550
     },
     {
       "id": "A-05",
@@ -232,7 +232,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 3239
+      "ms": 2974
     },
     {
       "id": "S-01",
@@ -247,7 +247,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1253
+      "ms": 1583
     },
     {
       "id": "S-02",
@@ -262,7 +262,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1284
+      "ms": 1270
     },
     {
       "id": "S-03",
@@ -277,7 +277,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1265
+      "ms": 1486
     },
     {
       "id": "M-01",
@@ -292,7 +292,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1662
+      "ms": 1424
     },
     {
       "id": "M-02",
@@ -307,7 +307,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1595
+      "ms": 1401
     },
     {
       "id": "M-03",
@@ -322,7 +322,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1391
+      "ms": 1457
     },
     {
       "id": "M-04",
@@ -337,7 +337,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1195
+      "ms": 1370
     },
     {
       "id": "M-05",
@@ -352,7 +352,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1262
+      "ms": 1595
     },
     {
       "id": "M-06",
@@ -367,7 +367,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 1327
+      "ms": 1336
     },
     {
       "id": "M-07",
@@ -382,7 +382,7 @@
       "interpretacion": null,
       "filas": null,
       "error_motor": null,
-      "ms": 2095
+      "ms": 2468
     },
     {
       "id": "M-14",
@@ -394,10 +394,10 @@
       "llamadas": 1,
       "descartadas": 0,
       "sql": "SELECT * FROM (SELECT * FROM consulta.pagos ORDER BY id) AS _acotado LIMIT 101",
-      "interpretacion": "Todos los pagos registrados en la copropiedad, sin limite, ordenados por id para tener un orden cronológico de inserción.",
+      "interpretacion": "Todos los pagos registrados en la copropiedad, sin límite, ordenados por su id para mostrar la historia completa de abonos recibidos.",
       "filas": 100,
       "error_motor": null,
-      "ms": 1840
+      "ms": 2122
     }
   ]
 }
