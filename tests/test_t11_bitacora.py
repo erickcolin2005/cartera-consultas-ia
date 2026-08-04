@@ -212,23 +212,75 @@ def test_el_eco_se_guarda_completo_sin_truncar(bitacora_aislada):
     assert eventos[0]["longitud_entrada"] == len(largo)
 
 
-def test_registrar_devuelve_False_si_no_puede_escribir(monkeypatch, tmp_path):
+def test_registrar_devuelve_False_si_NINGUN_destino_acepta(monkeypatch, tmp_path):
     """La pantalla dice «el intento quedo registrado». Tiene que poder decir «no».
 
-    Se fuerza un fallo de escritura poniendo la bitacora dentro de un fichero
-    —no un directorio—, asi que crear el padre falla. Si `registrar` devolviera
-    True igualmente, la pantalla afirmaria un registro que no existe: el defecto
-    exacto que esta prueba existe para impedir.
+    Se rompen los DOS destinos: la salida estandar se apaga por entorno y la
+    ruta del fichero se pone dentro de otro fichero —no un directorio—, asi que
+    crear el padre falla. Si `registrar` devolviera True igualmente, la pantalla
+    afirmaria un registro que no existe.
     """
     fichero = tmp_path / "soy-un-fichero"
     fichero.write_text("x", encoding="utf-8")
     monkeypatch.setenv("BITACORA", str(fichero / "sub" / "bitacora.jsonl"))
+    monkeypatch.setenv("BITACORA_STDOUT", "0")
 
     v = veredicto("DELETE FROM pagos", CATALOGO)
     assert bitacora.registrar(v, Resultado(sentencias_enviadas=0)) is False
 
 
-def test_registrar_devuelve_True_cuando_si_escribe(bitacora_aislada):
+def test_con_el_fichero_roto_pero_stdout_vivo_SI_queda_registrado(
+    monkeypatch, tmp_path, capsys
+):
+    """La semantica con dos destinos: basta con que uno acepte.
+
+    Es lo que la frase de la pantalla afirma —que el intento quedo registrado,
+    no en cuantos sitios— y es lo que ocurre en el despliegue: el fichero es el
+    destino EFIMERO y la salida estandar el duradero. Exigir los dos convertiria
+    en fallo lo que alli es lo normal.
+    """
+    fichero = tmp_path / "soy-un-fichero"
+    fichero.write_text("x", encoding="utf-8")
+    monkeypatch.setenv("BITACORA", str(fichero / "sub" / "bitacora.jsonl"))
+    monkeypatch.delenv("BITACORA_STDOUT", raising=False)
+
+    v = veredicto("DELETE FROM pagos", CATALOGO)
+    assert bitacora.registrar(v, Resultado(sentencias_enviadas=0)) is True
+
+    salida = capsys.readouterr().out
+    assert len(salida.splitlines()) == 1, "El evento no salió como UNA línea."
+    assert json.loads(salida)["regla"] == "S2"
+
+
+def test_lo_que_sale_por_stdout_es_EL_MISMO_evento_que_el_del_fichero(
+    monkeypatch, bitacora_aislada, capsys
+):
+    """Dos destinos que dijeran cosas distintas serian peor que uno solo:
+    habria que decidir a cual creerle."""
+    monkeypatch.delenv("BITACORA_STDOUT", raising=False)
+    v = veredicto(CARGA_M30, CATALOGO)
+    bitacora.registrar(v, Resultado(sentencias_enviadas=0))
+
+    del_fichero = bitacora.leer(bitacora_aislada)[0]
+    de_stdout = json.loads(capsys.readouterr().out)
+    assert del_fichero == de_stdout
+
+
+def test_la_carga_de_falsificacion_tampoco_parte_la_linea_de_stdout(
+    monkeypatch, bitacora_aislada, capsys
+):
+    """M-30 por la otra salida. Es la que de verdad importa en el despliegue:
+    ahi el visor de logs lee stdout, no el fichero."""
+    monkeypatch.delenv("BITACORA_STDOUT", raising=False)
+    bitacora.registrar(veredicto(CARGA_M30, CATALOGO), Resultado())
+
+    salida = capsys.readouterr().out
+    assert len(salida.splitlines()) == 1
+    assert json.loads(salida)["veredicto"] == "rechazo"
+
+
+def test_registrar_devuelve_True_cuando_si_escribe(bitacora_aislada, monkeypatch):
+    monkeypatch.setenv("BITACORA_STDOUT", "0")
     """El contrapunto del anterior. Sin este, un `registrar` que devolviera
     siempre False pasaria la prueba de arriba con nota."""
     v = veredicto("DELETE FROM pagos", CATALOGO)

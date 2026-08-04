@@ -67,6 +67,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -79,6 +80,25 @@ RUTA_POR_DEFECTO = RAIZ / "bitacora.jsonl"
 
 def ruta() -> Path:
     return Path(os.environ.get("BITACORA", RUTA_POR_DEFECTO))
+
+
+def _a_stdout() -> bool:
+    """Si la bitacora sale tambien por la salida estandar. Encendida por defecto.
+
+    En un contenedor —y la demo publica lo es— el disco es EFIMERO: al
+    reiniciar el servicio, el fichero desaparece. La salida estandar la recoge
+    la plataforma y persiste en su visor.
+
+    Sin esto, «el intento quedo registrado» seria cierto unas horas y falso
+    despues de un reinicio, sin que nada avisara. Es la misma frase que ya
+    estuvo sin cumplirse una vez.
+
+    RIESGO QUE ABRE, DECLARADO: el visor de logs de la plataforma es una
+    herramienta WEB y el evento lleva el texto literal del visitante. La
+    serializacion JSON lo escapa —por eso M-30 no funciona— pero la CSP de esta
+    aplicacion NO cubre el visor de un tercero. Residual aceptado.
+    """
+    return os.environ.get("BITACORA_STDOUT", "1").lower() not in ("0", "false", "no")
 
 
 def evento(veredicto, resultado, *, via: str = "sql") -> dict:
@@ -133,17 +153,32 @@ def registrar(veredicto, resultado, *, via: str = "sql") -> bool:
     respuesta ademas del apunte no arregla nada.
     """
     linea = serializar(evento(veredicto, resultado, via=via))
+    apuntado = False
+
+    if _a_stdout():
+        try:
+            # `write` + `flush`, no `print`: print separa el salto de linea en
+            # una escritura aparte, y con varias peticiones a la vez eso deja
+            # lineas entrelazadas. La linea entera, de una vez.
+            sys.stdout.write(linea)
+            sys.stdout.flush()
+            apuntado = True
+        except (OSError, ValueError):
+            pass
+
     try:
         destino = ruta()
         destino.parent.mkdir(parents=True, exist_ok=True)
-        # `newline=""` para que Windows no traduzca el \n a \r\n: asi el
-        # fichero es identico en la maquina de desarrollo y en el CI, que es
-        # Linux. Una sola llamada a `write` con la linea entera.
+        # `newline=""` para que Windows no traduzca el salto: asi el fichero
+        # es identico en desarrollo y en el CI, que es Linux. Una sola llamada
+        # a `write` con la linea entera.
         with open(destino, "a", encoding="utf-8", newline="") as f:
             f.write(linea)
-        return True
+        apuntado = True
     except OSError:
-        return False
+        pass
+
+    return apuntado
 
 
 def leer(destino: Path | None = None) -> list[dict]:
