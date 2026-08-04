@@ -108,6 +108,35 @@ rangos:
   consulta.cuotas.periodo:    {desde: "2025-01-01", hasta: "2026-07-01"}
   consulta.pagos.fecha_pago:  {desde: "2025-01-10", hasta: "2026-07-04"}
 
+# --- §7.2b · Ambiguedades declaradas — el bloque que habilita D-B ------
+#
+# HERMANO DEL DE ABAJO, Y FALTABA.
+# `NO_hay_datos_de` le da al modelo algo concreto que reconocer cuando la
+# pregunta no tiene respuesta, y por eso D-D funciona. No habia nada
+# equivalente para la ambiguedad: el modelo tenia las columnas documentadas
+# pero nadie le decia CUALES son los ejes donde una pregunta queda
+# indeterminada, asi que elegia una lectura y respondia con seguridad.
+#
+# Se midio contra el banco el 2026-08-03: A-04 y A-05 no repreguntaban.
+#
+# CADA LINEA ES UN HECHO DEL MODELO DE DATOS, NO UNA RESPUESTA DEL BANCO.
+# Que `fecha_pago` y `periodo_cuota` sean dos columnas distintas es un hecho;
+# que el estado 'corriente' exista al lado de 'vencida' es un hecho. Meter
+# aqui las preguntas del banco convertiria C3 en una medida de memoria.
+ambiguedades_conocidas:
+  - "«el mes de un pago» tiene dos lecturas: la fecha en que entro el dinero
+     (fecha_pago) o el mes de la cuota a la que se aplico (periodo_cuota).
+     Son columnas distintas y dan resultados distintos."                    # RN-03
+  - "«lo que se debe» tiene dos lecturas: solo lo vencido, o todo el saldo
+     pendiente incluyendo la cuota del periodo en curso (estado 'corriente')."
+  - "«mejor», «peor» y «mas importante» no estan definidos en el negocio:
+     admiten varias lecturas que dan listas distintas."
+  - "un periodo relativo («este mes», «el trimestre», «el mes pasado») se
+     cuenta desde la fecha de corte, y aun asi admite mas de una lectura:
+     mes calendario o ultimos 30 dias."
+  - "«cuantos propietarios» y «cuantas unidades» no son lo mismo: un
+     propietario puede tener varias unidades."                              # RN-06
+
 # --- §7.3 · Ausencias declaradas — el bloque que habilita D-D ---------
 NO_hay_datos_de:
   - "satisfaccion, encuestas o calificaciones de residentes"        # S-01

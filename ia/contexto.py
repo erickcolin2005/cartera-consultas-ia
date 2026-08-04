@@ -95,7 +95,14 @@ Reglas al escribir SQL:
 - No uses la fecha de hoy del servidor. Este conjunto tiene fecha de corte \
 fija: para decir "hoy" usa consulta.fecha_corte().
 - No pongas LIMIT salvo que la pregunta pida un tope ("los 10 que mas..."). \
-El sistema impone el suyo.\
+El sistema impone el suyo.
+- GRANO: `cuotas` y `pagos` tienen VARIAS filas por unidad —una por mes y \
+concepto—. Si la pregunta es sobre unidades o propietarios, AGRUPA. Sin \
+GROUP BY, "las 10 unidades que mas deben" devuelve las 10 cuotas mas grandes \
+y la misma unidad sale repetida.
+- FORMA: si la pregunta pide un numero ("cuantos", "cuanto"), devuelve UNA \
+fila con ese numero. Un GROUP BY que produce una columna de unos no responde \
+"cuantos": obliga a quien mira a contar las filas.\
 """
 
 
@@ -137,6 +144,26 @@ def _bloque_rangos(catalogo: dict[str, Any]) -> str:
         lineas.append(f"  {columna}: de {r['desde']} a {r['hasta']}")
     lineas.append(f"  fecha de corte: {catalogo['fecha_corte']}")
     return "\n".join(lineas)
+
+
+def _bloque_ambiguedades(catalogo: dict[str, Any]) -> str:
+    """El bloque hermano del de ausencias, y faltaba.
+
+    El de ausencias le da al modelo algo concreto que reconocer cuando la
+    pregunta no tiene respuesta, y por eso D-D funcionaba a la primera. No
+    habia nada equivalente para la ambiguedad: el modelo tenia las columnas
+    documentadas, pero nadie le decia DONDE una pregunta queda indeterminada.
+    Sin eso elegia una lectura y respondia con seguridad, que es exactamente
+    el fallo que D-B existe para no cometer.
+    """
+    ejes = "\n".join(
+        f"  - {' '.join(a.split())}" for a in catalogo["ambiguedades_conocidas"]
+    )
+    return (
+        "AMBIGUEDADES CONOCIDAS — si la pregunta cae en uno de estos ejes y no\n"
+        'lo aclara, responde con tipo "ambigua" en vez de elegir una lectura:\n'
+        + ejes
+    )
 
 
 def _bloque_ausencias(catalogo: dict[str, Any]) -> str:
@@ -228,6 +255,7 @@ def construir(catalogo: dict[str, Any], *, con_instrucciones: bool = True) -> st
         _bloque_reglas(catalogo),
         _bloque_valores(catalogo),
         _bloque_rangos(catalogo),
+        _bloque_ambiguedades(catalogo),
         _bloque_ausencias(catalogo),
     ]
     if con_instrucciones:

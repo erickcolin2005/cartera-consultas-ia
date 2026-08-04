@@ -134,6 +134,32 @@ def test_las_ausencias_declaradas_llegan_completas():
         assert ausencia in TEXTO
 
 
+def test_las_ambiguedades_declaradas_llegan_al_modelo():
+    """El bloque hermano del de ausencias. Faltaba, y se vio al correr el banco.
+
+    D-D funcionaba a la primera porque el catálogo declara lo que NO existe.
+    D-B fallaba en 3 de 5 porque nada declaraba DÓNDE una pregunta queda
+    indeterminada: el modelo elegía una lectura y respondía con seguridad.
+    """
+    for eje in CATALOGO_CRUDO["ambiguedades_conocidas"]:
+        primeras = " ".join(eje.split())[:40]
+        assert primeras in " ".join(TEXTO.split()), f"no llega al modelo: {primeras}"
+
+
+def test_las_ambiguedades_no_copian_las_preguntas_del_banco():
+    """Cada eje es un hecho del modelo de datos, no una respuesta del examen.
+
+    Que `fecha_pago` y `periodo_cuota` sean columnas distintas es un hecho.
+    Meter aquí las preguntas del banco convertiría C3 en una medida de
+    memoria, igual que pasaría con los pares curados.
+    """
+    banco = yaml.safe_load((RAIZ / "banco" / "banco.yaml").read_text(encoding="utf-8"))
+    preguntas = [c["pregunta"].lower() for c in banco["ambiguas"]]
+    for eje in CATALOGO_CRUDO["ambiguedades_conocidas"]:
+        for pregunta in preguntas:
+            assert pregunta not in eje.lower()
+
+
 def test_los_rangos_llegan_porque_evitan_el_cero_falso():
     """«¿Cuánto se recaudó en 2023?» sin rangos devuelve una tabla vacía, y una
     tabla vacía se lee como un cero. No es un error: es una respuesta correcta

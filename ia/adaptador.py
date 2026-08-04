@@ -57,13 +57,34 @@ TOPE_TOKENS_SALIDA = 900
 
 SEGUNDOS_DE_ESPERA = 30
 
-# Precios por millon de tokens, en USD. VERIFICADOS por Erick contra la pagina
-# de precios de OpenAI el 2026-08-03. Se escriben aqui porque el contador de
-# gasto no significa nada sin ellos — y con fecha, porque un precio sin fecha
-# es un numero que envejece en silencio.
-PRECIO_ENTRADA = 0.15 / 1_000_000
-PRECIO_ENTRADA_CACHEADA = 0.075 / 1_000_000
-PRECIO_SALIDA = 0.60 / 1_000_000
+# Precios por millon de tokens, en USD, POR MODELO.
+#
+# Estaban escritos sueltos, validos solo para gpt-4o-mini. Al probar otro
+# modelo el medidor siguio calculando con los precios del primero y devolvio
+# una cifra falsa sin avisar — exactamente el tipo de numero que este proyecto
+# no acepta. El fallo no fue el precio: fue que una constante global se
+# aplicara a un parametro variable.
+#
+# Cada entrada lleva la FECHA en que se verifico. Un precio sin fecha es un
+# numero que envejece en silencio.
+PRECIOS: dict[str, dict[str, float]] = {
+    # Verificados por Erick contra la pagina de precios de OpenAI, 2026-08-03.
+    "gpt-4o-mini": {
+        "entrada": 0.15 / 1_000_000,
+        "cacheada": 0.075 / 1_000_000,
+        "salida": 0.60 / 1_000_000,
+        "verificado": "2026-08-03",
+    },
+}
+
+
+class PrecioDesconocido(ValueError):
+    """No hay precio verificado para ese modelo.
+
+    Falla CERRADO a proposito. La alternativa —estimar con el precio de otro
+    modelo, o poner cero— daria un medidor que responde siempre y acierta a
+    veces, y un medidor asi es peor que no tenerlo: se le cree.
+    """
 
 
 @dataclass
@@ -75,6 +96,7 @@ class Gasto:
     proyecto no acepta.
     """
 
+    modelo: str = MODELO
     llamadas: int = 0
     tokens_entrada: int = 0
     tokens_cacheados: int = 0
@@ -82,11 +104,18 @@ class Gasto:
 
     @property
     def usd(self) -> float:
+        precios = PRECIOS.get(self.modelo)
+        if precios is None:
+            raise PrecioDesconocido(
+                f"No hay precio verificado para `{self.modelo}`. Añádelo a "
+                f"PRECIOS con la fecha en que lo comprobaste. Sin eso el "
+                f"medidor daría una cifra inventada."
+            )
         frescos = self.tokens_entrada - self.tokens_cacheados
         return (
-            frescos * PRECIO_ENTRADA
-            + self.tokens_cacheados * PRECIO_ENTRADA_CACHEADA
-            + self.tokens_salida * PRECIO_SALIDA
+            frescos * precios["entrada"]
+            + self.tokens_cacheados * precios["cacheada"]
+            + self.tokens_salida * precios["salida"]
         )
 
 
@@ -113,9 +142,14 @@ class OpenAI:
                 "Falta OPENAI_API_KEY. Va en el fichero .env, que está en "
                 ".gitignore y no sube al repositorio."
             )
+        if modelo not in PRECIOS:
+            raise PrecioDesconocido(
+                f"No hay precio verificado para `{modelo}`. El tope de gasto "
+                f"no podría calcularse, así que no se permite usarlo."
+            )
         self.modelo = modelo
         self.tope_usd = tope_usd
-        self.gasto = Gasto()
+        self.gasto = Gasto(modelo=modelo)
 
     def preguntar(
         self, contexto: str, pregunta: str, pista: str | None = None
