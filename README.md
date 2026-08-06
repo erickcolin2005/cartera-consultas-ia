@@ -644,15 +644,54 @@ fallara, una consulta desmedida se cortaría por tiempo, no por tamaño.
 
 ### La distinción que no se puede perder de vista
 
-> **Esto es un diseño verificado contra un modelo de amenazas. No es un sistema
-> medido.**
+> **Esto es un diseño verificado contra un modelo de amenazas, y además medido.
+> Pero no todo lo medido afirma lo mismo, y esa diferencia importa más que las
+> cifras.**
 
 Un modelo de amenazas dice qué ataques se consideraron y qué control les
-corresponde. Una medición dice qué pasó cuando se ejecutaron. Hoy hay lo primero,
-más la parte de lo segundo que cabe en el incremento I-1 (las aserciones de
-privilegios contra un motor real). **Las cifras de precisión, contención y
-ambigüedad no existen todavía y no se van a insinuar.** Cuando existan irán en
-una tabla, **con los fallos incluidos**.
+corresponde. Una medición dice qué pasó cuando se ejecutaron. **Hoy hay las dos
+cosas:** los 52 casos del banco están medidos y publicados **con su fallo
+dentro** en [§4.1](#41--los-resultados-con-los-fallos-dentro).
+
+Lo que esas cifras **no** dicen, y está detallado allí mismo:
+
+- **No hay un porcentaje de fiabilidad.** Los nueve valores normales se midieron
+  **dos veces, no cinco**. Dos mediciones descartan la inestabilidad gruesa; no
+  son una tasa de acierto, y esta tabla no la afirma.
+- **Ocho de los casos maliciosos los paró el modelo, no el guardián.** Eso es
+  evidencia de que el modelo **no lo intentó**, no de que el sistema lo hubiera
+  detenido. La contención se mide con el adaptador hostil que sí genera el
+  `DELETE`, y con los 26 casos que no pasan por ningún modelo.
+
+Una cifra que junta esas dos cosas afirma más de lo que se midió.
+
+---
+
+## 6.1 · El otro proyecto, y por qué son dos
+
+Hay un segundo repositorio sobre **el mismo negocio**, y que sean dos es el
+argumento entero.
+
+Este resuelve **consultas**: preguntas escritas en español sobre datos de cartera,
+que un modelo traduce a SQL. El problema es relacional de arriba abajo —entidades
+que se cruzan, agregaciones, una respuesta correcta que alguien tiene que poder
+auditar—. Ese problema pide SQL, y por eso aquí hay SQL.
+
+El otro resuelve **la reserva de zonas comunes** de la misma copropiedad, y ahí la
+pregunta no es *qué respondió* sino **quién llegó primero**. Un hueco de tiempo
+está libre o no lo está: no hay respuesta parcial, no hay repregunta posible, y
+dos vecinos que pulsan a la vez tienen que resolverse en el motor y no en la
+lógica. Ese problema no pide una base relacional. Pide un almacén sin servidores
+que **no ofrece restricciones de unicidad** — donde impedir la doble reserva no se
+declara en una línea, **se diseña**.
+
+**No son la misma decisión, y por eso no se resolvieron con la misma
+herramienta.** Elegir SQL allí y no elegirlo aquí es lo único que ninguno de los
+dos repositorios puede demostrar por separado.
+
+> **Todavía no está publicado.** Cuando lo esté, el enlace va en esta sección.
+> Mientras tanto no enlaza a nada: **un enlace muerto en un README es peor que no
+> tener enlace.**
 
 ---
 
